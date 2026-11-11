@@ -30,14 +30,31 @@ function comboRow({ title, subtitle = null, settings, key, choices }) {
     return row;
 }
 
-/** An Adw.SpinRow backed by an integer setting. */
+/**
+ * An Adw.SpinRow backed by an integer setting.
+ *
+ * Wired by hand rather than with settings.bind: the row's value is a double and the key is an int, and
+ * whether GSettings transforms between them quietly or complains is not something to find out in front
+ * of someone. Two connections, an explicit round, and a guard so the two don't chase each other.
+ */
 function spinRow({ title, subtitle = null, settings, key, min, max, step }) {
     const row = new Adw.SpinRow({
         title,
         subtitle,
         adjustment: new Gtk.Adjustment({ lower: min, upper: max, step_increment: step, page_increment: step }),
     });
-    settings.bind(key, row, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+    row.value = settings.get_int(key);
+    row.connect('notify::value', () => {
+        const wanted = Math.round(row.value);
+        if (settings.get_int(key) !== wanted)
+            settings.set_int(key, wanted);
+    });
+    settings.connect(`changed::${key}`, () => {
+        const saved = settings.get_int(key);
+        if (Math.round(row.value) !== saved)
+            row.value = saved;
+    });
 
     return row;
 }
