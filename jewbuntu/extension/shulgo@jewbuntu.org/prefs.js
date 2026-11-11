@@ -5,7 +5,11 @@
  * the API key goes to ~/.config/jewbuntu/shulgo.conf, owner-only, and the widget notices it change.
  */
 
-import { ExtensionPreferences } from 'resource:///org/gnome/shell/extensions/prefs.js';
+// The settings window runs in its own process, which carries its own resources — so this path is NOT
+// the one extension.js uses. It is "Shell/Extensions/js", capital S, capital E, and the "js" segment;
+// the shell's own "shell/extensions/extension.js" has none of those. Case matters, and getting it wrong
+// fails only when someone opens the settings, never when the extension loads.
+import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import { ShulGoApi } from './shulgo/core/api.js';
 import { makeTransport } from './shulgo/gnome/transport.js';
