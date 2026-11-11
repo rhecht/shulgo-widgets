@@ -76,9 +76,16 @@
 
 /* ---- header ----------------------------------------------------------------------------- */
 
+/* The header, the chip row, the tab strip and the footer all carry a ground of their own, so every
+ * one of them is legible whatever ends up behind the menu. The rows and the zmanim card already did,
+ * which is exactly why they stayed readable through two rounds of the surface going missing. */
 .shulgo-header {
   spacing: 4px;
-  padding: 2px 4px 0 6px;
+  padding: 7px 8px 7px 10px;
+  margin: 0 4px;
+  border-radius: 12px;
+  background-color: rgba(28, 39, 64, 0.85);
+  border: 1px solid rgba(143, 179, 234, 0.1);
 }
 
 .shulgo-place {
@@ -90,7 +97,7 @@
 .shulgo-hebrew-date {
   font-size: 0.85em;
   padding-top: 1px;
-  color: #a9b3c2;
+  color: #bac4d3;
 }
 
 .shulgo-spinner {
@@ -173,7 +180,11 @@
 
 .shulgo-chips {
   spacing: 4px;
-  padding: 0 0 2px 0;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  border-radius: 99px;
+  background-color: rgba(18, 48, 90, 0.5);
+  border: 1px solid rgba(143, 179, 234, 0.12);
 }
 
 /* The chips carry a ground of their own rather than floating on the surface, the way the rows do.
@@ -438,12 +449,16 @@
 
 .shulgo-footer {
   spacing: 6px;
-  padding: 2px 8px 4px 8px;
+  padding: 6px 8px 6px 10px;
+  margin: 0 4px 2px 4px;
+  border-radius: 12px;
+  background-color: rgba(28, 39, 64, 0.85);
+  border: 1px solid rgba(143, 179, 234, 0.1);
 }
 
 .shulgo-updated {
   font-size: 0.8em;
-  color: #8f9bad;
+  color: #bac4d3;
 }
 
 .shulgo-link-button,
