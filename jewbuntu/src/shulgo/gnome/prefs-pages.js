@@ -264,11 +264,33 @@ export function accountPage(settings, apiFor) {
 
     const group = new Adw.PreferencesGroup({
         title: 'API key',
-        // Markup, like AdwStatusPage's description — so the ampersand is written out.
-        description: 'Make a key in ShulGo under Admin › System › API &amp; apps, then paste it here. '
-            + 'It is kept in ~/.config/jewbuntu/shulgo.conf, readable only by you.',
+        // Markup, like AdwStatusPage's description — so any ampersand has to be written out.
+        description: 'ShulGo gives out its own keys. Ask for one below: the team reads every request and '
+            + 'emails you a link that shows your key once. It is then kept in '
+            + '~/.config/jewbuntu/shulgo.conf, readable only by you.',
     });
     page.add(group);
+
+    // How an ordinary person gets a key. The admin page is no use to them — it sits behind ShulGo's own
+    // staff login — so the request form is the row that comes first.
+    const ask = new Adw.ActionRow({
+        title: 'Ask ShulGo for a key',
+        subtitle: 'Opens the request form in your browser',
+        activatable: true,
+        use_markup: false,
+    });
+    ask.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
+    ask.connect('activated', () => {
+        const url = `${apiFor().siteUrl}/developers/request`;
+        try {
+            Gtk.UriLauncher
+                ? new Gtk.UriLauncher({ uri: url }).launch(ask.get_root(), null, null)
+                : Gio.AppInfo.launch_default_for_uri(url, null);
+        } catch (e) {
+            logError(e, `ShulGo: could not open ${url}`);
+        }
+    });
+    group.add(ask);
 
     const entry = new Adw.PasswordEntryRow({ title: 'Key', text: loadApiKey() });
     group.add(entry);
@@ -319,6 +341,15 @@ export function accountPage(settings, apiFor) {
             status.subtitle = answer.message;
         }
     });
+
+    const mikvahNote = new Adw.PreferencesGroup({
+        title: 'About mikvaos',
+        description: 'The mikvah listings come from mikvah.org, whose terms keep them to ShulGo’s own '
+            + 'apps. A key you ask for here reads everything else — minyanim, events, zmanim — but the '
+            + 'Mikvaos tab stays hidden. If you run ShulGo yourself, an admin can issue a key of the kind '
+            + 'that includes them under Admin › System › API &amp; apps.',
+    });
+    page.add(mikvahNote);
 
     const advanced = new Adw.PreferencesGroup({
         title: 'Advanced',

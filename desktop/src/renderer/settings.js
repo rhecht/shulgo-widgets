@@ -151,6 +151,11 @@ $('resetBase').addEventListener('click', () => {
     apply({ apiBaseUrl: 'https://shulgo.com/api/v1' });
 });
 
+$('askForKey').addEventListener('click', () => {
+    const base = state?.siteUrl ?? 'https://shulgo.com';
+    window.shulgo.openExternal(`${base}/developers/request`);
+});
+
 $('quit').addEventListener('click', () => window.shulgo.quit());
 
 window.shulgo.onState((next) => {

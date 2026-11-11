@@ -221,3 +221,21 @@ footer button {
 footer button:hover {
   background: rgba(255, 138, 128, 0.24);
 }
+
+/* The way to get a key in the first place: a link out to ShulGo's request form. */
+.ask-link {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gold-light);
+  background: rgba(242, 183, 5, 0.14);
+  border: 1px solid rgba(242, 183, 5, 0.3);
+}
+
+.ask-link:hover {
+  background: rgba(242, 183, 5, 0.26);
+  color: #fff;
+}

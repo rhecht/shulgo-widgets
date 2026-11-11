@@ -56,39 +56,43 @@
 
 /* ---- the glass the menu is made of ------------------------------------------------------- */
 
-/* A Shell menu is drawn by its box-pointer, which some themes fill behind the content. Clearing that
- * first is what lets anything show through at all. */
-.shulgo-glass-tint,
-.shulgo-glass-blur,
-.shulgo-glass-solid {
+/* The box-pointer around the menu only has to get out of the way, so whatever the theme would have
+ * drawn behind our own box doesn't show as a ring around it. */
+.shulgo-pointer {
   -arrow-background-color: transparent;
   -arrow-border-color: transparent;
   -arrow-border-width: 0;
   background-color: transparent;
 }
 
+/* And the navy goes on OUR box, by our own class name.
+ *
+ * It used to go on .popup-menu-content, which is the Shell theme's. When that selector stopped
+ * matching, the rule above still cleared the theme's background and nothing replaced it — so the menu
+ * went transparent over the desktop and every one of the colours below, all of them written for a dark
+ * surface, turned into light text on a light background. Hence: only our own classes from here down. */
+.shulgo-menu {
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+}
+
 /* See-through navy, so the wallpaper and windows show through. */
-.shulgo-glass-tint .popup-menu-content,
-.shulgo-glass-blur .popup-menu-content {
+.shulgo-menu.shulgo-glass-tint {
   background-color: rgba(11, 18, 32, 0.78);
   border: 1px solid rgba(143, 179, 234, 0.2);
-  border-radius: 16px;
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
-  padding: 6px;
 }
 
 /* With a blur behind it, the glass can be thinner still. */
-.shulgo-glass-blur .popup-menu-content {
+.shulgo-menu.shulgo-glass-blur {
   background-color: rgba(11, 18, 32, 0.62);
+  border: 1px solid rgba(143, 179, 234, 0.2);
 }
 
 /* For anyone who'd rather read than see through. */
-.shulgo-glass-solid .popup-menu-content {
+.shulgo-menu.shulgo-glass-solid {
   background-color: #0b1220;
   border: 1px solid #26324a;
-  border-radius: 16px;
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
-  padding: 6px;
 }
 
 .shulgo-menu-item {

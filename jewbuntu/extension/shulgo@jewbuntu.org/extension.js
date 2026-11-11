@@ -208,11 +208,15 @@ class ShulGoIndicator extends PanelMenu.Button {
      */
     applyGlass() {
         const wanted = this._config.glass;
-        const pointer = this.menu.actor;
 
+        // The navy goes on our own box, never on a class the Shell theme owns. menu.box is the actor
+        // that carries the menu's background, and it already wears our "shulgo-menu" class, so styling
+        // it needs nothing from the theme and can't stop matching when the theme is rearranged.
+        // The box-pointer around it only has to get out of the way.
+        this.menu.actor.add_style_class_name('shulgo-pointer');
         for (const name of ['blur', 'tint', 'solid'])
-            pointer.remove_style_class_name(`shulgo-glass-${name}`);
-        pointer.add_style_class_name(`shulgo-glass-${wanted}`);
+            this.menu.box.remove_style_class_name(`shulgo-glass-${name}`);
+        this.menu.box.add_style_class_name(`shulgo-glass-${wanted}`);
 
         if (this._blur) {
             this.menu.box.remove_effect(this._blur);
@@ -309,7 +313,8 @@ class ShulGoIndicator extends PanelMenu.Button {
         if (state.needsKey) {
             this._content.add_child(this._notice(
                 'Add your ShulGo API key',
-                'Make a key in ShulGo (Admin › System › API & apps), then paste it into Settings.',
+                'Ask ShulGo for one at shulgo.com/developers/request — they email you a link that '
+                + 'shows your key. Settings has the button, and the box to paste it into.',
                 'Open Settings', () => {
                     this.menu.close();
                     this._extension.openPreferences();
