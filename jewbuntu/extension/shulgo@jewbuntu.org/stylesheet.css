@@ -27,31 +27,39 @@
   font-weight: 500;
 }
 
+/* The countdown pill carries its own dark ground.
+ *
+ * It used to be a coloured tint with coloured text on it, which only works over a dark top bar. The
+ * Jewbuntu bar is clear, so over a pale wallpaper it was amber on near-white. The bar's own label is
+ * left alone — it inherits whatever colour the theme has decided suits its bar, which is the theme's
+ * business and it gets it right. The pill is ours, so it brings its own. */
 .shulgo-panel-pill {
   font-size: 0.82em;
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 9px;
-  background-color: rgba(143, 179, 234, 0.22);
+  background-color: rgba(11, 18, 32, 0.82);
+  color: #e6ebf3;
 }
 
 .shulgo-pill-comfortable {
-  background-color: rgba(95, 211, 154, 0.22);
-  color: #5fd39a;
+  background-color: rgba(11, 18, 32, 0.82);
+  color: #74e3ae;
 }
 
 .shulgo-pill-tight {
-  background-color: rgba(243, 182, 91, 0.22);
-  color: #f3b65b;
+  background-color: rgba(11, 18, 32, 0.82);
+  color: #ffd16b;
 }
 
 .shulgo-pill-missed {
-  background-color: rgba(255, 138, 128, 0.2);
-  color: #ff8a80;
+  background-color: rgba(11, 18, 32, 0.82);
+  color: #ff9d94;
 }
 
 .shulgo-pill-unknown {
-  background-color: rgba(143, 179, 234, 0.18);
+  background-color: rgba(11, 18, 32, 0.82);
+  color: #c3cddc;
 }
 
 /* ---- the glass the menu is made of ------------------------------------------------------- */

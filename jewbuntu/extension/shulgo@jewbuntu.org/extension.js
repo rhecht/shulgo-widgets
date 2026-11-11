@@ -127,6 +127,7 @@ class ShulGoIndicator extends PanelMenu.Button {
 
         const holder = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         holder.style_class = 'shulgo-menu-item';
+        this._holder = holder;
 
         const root = new St.BoxLayout({ vertical: true, style_class: 'shulgo-root', x_expand: true });
         this._rootBox = root;
@@ -233,8 +234,10 @@ class ShulGoIndicator extends PanelMenu.Button {
         this.menu.actor.set_style(`${blank} -arrow-background-color: transparent; `
             + '-arrow-border-color: transparent; -arrow-border-width: 0;');
         this.menu.box.set_style(`${blank} padding: 0;`);
-        this._rootBox.set_style(`${surface} border-radius: 16px; padding: 10px 8px 6px 8px; `
-            + 'box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);');
+        this._holder?.set_style(`${blank} padding: 0;`);
+        // No box-shadow: St draws one as a rectangle, ignoring the border-radius, which is what put a
+        // square halo around the rounded panel. The navy carries its own edge well enough without it.
+        this._rootBox.set_style(`${surface} border-radius: 16px; padding: 10px 8px 6px 8px;`);
 
         if (this._blur) {
             this.menu.box.remove_effect(this._blur);
