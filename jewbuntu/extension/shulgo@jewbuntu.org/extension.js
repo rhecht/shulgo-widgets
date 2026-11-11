@@ -17,10 +17,12 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { ShulGoApi } from './shulgo/core/api.js';
+import { Cache } from './shulgo/core/cache.js';
 import { Config, configPath, loadApiKey } from './shulgo/gnome/settings.js';
 import { Locator } from './shulgo/gnome/geo.js';
 import { Store } from './shulgo/core/store.js';
 import { makeTransport } from './shulgo/gnome/transport.js';
+import { makeNetwork, makeStorage } from './shulgo/gnome/offline.js';
 import * as F from './shulgo/core/format.js';
 
 const TABS = [
@@ -240,7 +242,8 @@ class ShulGoIndicator extends PanelMenu.Button {
         this._renderPanel();
         if (this._tab === 'minyanim' || this._tab === 'zmanim')
             this._renderContent();
-        this._updatedLabel.text = F.updatedAgo(this._store.state.updatedAt);
+        const s = this._store.state;
+        this._updatedLabel.text = s.stale ? F.takenAt(s.staleSince) : F.updatedAgo(s.updatedAt);
     }
 
     _render() {
@@ -327,6 +330,11 @@ class ShulGoIndicator extends PanelMenu.Button {
             return;
         }
 
+        // Showing something old is better than showing nothing, as long as it says so.
+        const notice = F.offlineNotice(state, this._store.hasAnything);
+        if (notice)
+            this._content.add_child(this._offlineStrip(notice));
+
         if (this._tab === 'minyanim')
             this._renderMinyanim();
         else if (this._tab === 'events')
@@ -356,7 +364,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         }
         this._content.add_child(chips);
 
-        if (state.error) {
+        if (state.error && !state.minyanim.length) {
             this._content.add_child(this._errorBox(state.error));
 
             return;
@@ -540,6 +548,11 @@ class ShulGoIndicator extends PanelMenu.Button {
             return;
         }
 
+        if (this._store.zmanimOutOfDate) {
+            this._content.add_child(this._empty('These zmanim are from another day',
+                `Worked out for ${this._store.state.zmanimForDate}. Today’s come down as soon as ShulGo is back.`));
+        }
+
         for (const zman of rows) {
             const row = new St.BoxLayout({
                 style_class: `shulgo-zman${zman.isNext ? ' shulgo-zman-next' : ''}${zman.past ? ' shulgo-zman-past' : ''}`,
@@ -572,11 +585,33 @@ class ShulGoIndicator extends PanelMenu.Button {
         return box;
     }
 
+    /**
+     * The quiet strip above a list we couldn't refresh. Not an error: what's underneath is still worth
+     * reading, and it mends itself.
+     */
+    _offlineStrip(notice) {
+        const box = new St.BoxLayout({ style_class: 'shulgo-offline', x_expand: true });
+        box.add_child(new St.Icon({ icon_name: 'network-offline-symbolic', style_class: 'shulgo-offline-icon' }));
+
+        const words = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        words.add_child(new St.Label({ text: notice.title, style_class: 'shulgo-offline-title' }));
+        words.add_child(new St.Label({ text: notice.body, style_class: 'shulgo-offline-body' }));
+        box.add_child(words);
+
+        const again = new St.Button({ label: 'Try now', style_class: 'shulgo-offline-retry', can_focus: true });
+        again.connect('clicked', () => this._store.refresh({ fresh: true }));
+        box.add_child(again);
+
+        return box;
+    }
+
     _errorBox(error) {
-        const box = new St.BoxLayout({ vertical: true, style_class: 'shulgo-notice shulgo-notice-error', x_expand: true });
-        box.add_child(new St.Label({ text: 'ShulGo couldn’t answer', style_class: 'shulgo-notice-title' }));
-        box.add_child(new St.Label({ text: error.message || '', style_class: 'shulgo-notice-body' }));
-        const button = new St.Button({ label: 'Try again', style_class: 'shulgo-primary-button', can_focus: true });
+        const notice = F.offlineNotice(this._store.state, false);
+        const box = new St.BoxLayout({ vertical: true, style_class: 'shulgo-notice', x_expand: true });
+        box.add_child(new St.Icon({ icon_name: 'network-offline-symbolic', style_class: 'shulgo-resting-icon' }));
+        box.add_child(new St.Label({ text: notice?.title ?? 'ShulGo couldn’t answer', style_class: 'shulgo-notice-title' }));
+        box.add_child(new St.Label({ text: notice?.body ?? error.message ?? '', style_class: 'shulgo-notice-body' }));
+        const button = new St.Button({ label: 'Try now', style_class: 'shulgo-primary-button', can_focus: true });
         button.connect('clicked', () => this._store.refresh({ fresh: true }));
         box.add_child(button);
 
@@ -615,12 +650,20 @@ class ShulGoIndicator extends PanelMenu.Button {
 export default class ShulGoExtension extends Extension {
     enable() {
         this.config = new Config(this.getSettings());
+        this.network = makeNetwork();
+        this.cache = new Cache(makeStorage());
         this.api = new ShulGoApi({
             baseUrl: this.config.baseUrl,
             apiKey: loadApiKey(),
             transport: makeTransport({ userAgent: 'JewBuntu-ShulGo-Shell/1.0' }),
+            cache: this.cache,
+            isOnline: this.network.isOnline,
         });
-        this.store = new Store(this.api, this.config, new Locator(this.api, this.config));
+        this.store = new Store(this.api, this.config, new Locator(this.api, this.config), this.network);
+        this.store.connect((what) => {
+            if (what === 'changed')
+                this.cache.save();
+        });
 
         this._indicator = new ShulGoIndicator(this);
         Main.panel.addToStatusArea('shulgo@jewbuntu.org', this._indicator, 1, this.config.panelPosition);
@@ -647,6 +690,7 @@ export default class ShulGoExtension extends Extension {
     disable() {
         this._keyMonitor?.cancel();
         this._keyMonitor = null;
+        this.cache?.save();
         this.store?.destroy();
         this.config?.destroy();
         this._indicator?.destroy();
@@ -654,6 +698,8 @@ export default class ShulGoExtension extends Extension {
         this.store = null;
         this.api = null;
         this.config = null;
+        this.cache = null;
+        this.network = null;
     }
 
     /** Settings writes the key to a file; pick it up without a restart. */

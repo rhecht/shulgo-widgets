@@ -18,9 +18,11 @@ import Gtk from 'gi://Gtk?version=4.0';
 import { programArgs, programInvocationName } from 'system';
 
 import { ShulGoApi } from './shulgo/core/api.js';
+import { Cache } from './shulgo/core/cache.js';
 import { Store } from './shulgo/core/store.js';
 import * as F from './shulgo/core/format.js';
 import { makeTransport } from './shulgo/gnome/transport.js';
+import { makeNetwork, makeStorage } from './shulgo/gnome/offline.js';
 import { Config, SCHEMA_ID, loadApiKey } from './shulgo/gnome/settings.js';
 import { Locator } from './shulgo/gnome/geo.js';
 import { adwaitaColors } from './shulgo/core/palette.js';
@@ -379,11 +381,20 @@ class ShulGoWindow extends Adw.ApplicationWindow {
         this._windowTitle.title = state.place?.label
             ? (state.place.label === 'your location' ? 'Near you' : state.place.label)
             : 'ShulGo';
-        this._windowTitle.subtitle = [F.hebrewDayLine(state.today), F.updatedAgo(state.updatedAt)]
-            .filter((x) => x).join(' · ');
+        this._windowTitle.subtitle = [
+            F.hebrewDayLine(state.today),
+            state.stale ? F.takenAt(state.staleSince) : F.updatedAgo(state.updatedAt),
+        ].filter((x) => x).join(' · ');
 
-        if (state.error && !state.needsKey && !state.needsPlace) {
+        // The banner is how the window says "this is older than it looks" without taking the list away.
+        const notice = F.offlineNotice(state, this._store.hasAnything);
+        if (notice && this._store.hasAnything) {
+            this._banner.title = `${notice.title} — ${notice.body}`;
+            this._banner.button_label = 'Try now';
+            this._banner.revealed = true;
+        } else if (state.error && !state.needsKey && !state.needsPlace && !notice) {
             this._banner.title = state.error.message;
+            this._banner.button_label = 'Try again';
             this._banner.revealed = true;
         } else {
             this._banner.revealed = false;
@@ -429,6 +440,21 @@ class ShulGoWindow extends Adw.ApplicationWindow {
 
     _gate(box) {
         const { state } = this._store;
+
+        // Nothing saved to fall back on: say so kindly, and leave the trying to the background.
+        const notice = F.offlineNotice(state, this._store.hasAnything);
+        if (notice && !this._store.hasAnything && !state.needsKey && !state.needsPlace) {
+            this._status(box, {
+                icon: 'network-offline-symbolic',
+                title: notice.title,
+                description: notice.body,
+                actionLabel: 'Try now',
+                onAction: () => this._store.refresh({ fresh: true }),
+            });
+
+            return true;
+        }
+
         if (state.needsKey) {
             this._status(box, {
                 icon: 'dialog-password-symbolic',
@@ -723,6 +749,11 @@ class ShulGoWindow extends Adw.ApplicationWindow {
             title: 'Today',
             description: [meta.date, meta.timezone].filter((x) => x).join(' · '),
         });
+        if (this._store.zmanimOutOfDate) {
+            group.set_description(`These were worked out for ${this._store.state.zmanimForDate}, not today. `
+                + 'Today’s come down as soon as ShulGo is back.');
+        }
+
         for (const zman of rows) {
             const row = new Adw.ActionRow({
                 title: zman.label,
@@ -774,12 +805,21 @@ class ShulGoApp extends Adw.Application {
         }
 
         this._config = new Config(settings);
+        this._network = makeNetwork();
+        this._cache = new Cache(makeStorage());
         this._api = new ShulGoApi({
             baseUrl: this._config.baseUrl,
             apiKey: loadApiKey(),
             transport: makeTransport({ userAgent: 'JewBuntu-ShulGo-App/1.0' }),
+            cache: this._cache,
+            isOnline: this._network.isOnline,
         });
-        this._store = new Store(this._api, this._config, new Locator(this._api, this._config, APP_ID));
+        this._store = new Store(this._api, this._config, new Locator(this._api, this._config, APP_ID),
+            this._network);
+        this._store.connect((what) => {
+            if (what === 'changed')
+                this._cache.save();
+        });
 
         this._loadStyle();
         this._addActions();
@@ -806,6 +846,7 @@ class ShulGoApp extends Adw.Application {
     }
 
     vfunc_shutdown() {
+        this._cache?.save();
         this._store?.destroy();
         this._config?.destroy();
         super.vfunc_shutdown();

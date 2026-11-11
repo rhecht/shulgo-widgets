@@ -114,3 +114,17 @@ here is signed yet.
 The same six endpoints as the JewBuntu widget: `/next`, `/events`, `/mikvaos`, `/zmanim`, `/calendar`
 and `/places`. Answers are cached for as long as they're good for — a minute for minyanim, six hours for
 zmanim — and countdowns tick locally, so the menu bar stays right between requests.
+
+## When ShulGo can't be reached
+
+Every good answer is also written to `answers.json` beside the settings. When a request fails — no
+network, site down, laptop lid just opened on a train — the last one is shown instead, under a quiet
+amber strip saying where it came from and when, with a **Try now** button. The footer then says "from
+1:45 PM" rather than "Updated just now", and the menu-bar text gains a leading dot so a countdown worked
+out from an old list doesn't look as certain as a fresh one.
+
+With nothing saved yet you get a friendly resting state rather than an error. Repeated failures back off
+up to a quarter of an hour, and the panel — being an ordinary web page, and so the part of the app that
+hears `online`/`offline` — tells the main process the moment the network returns, which retries at once.
+
+A key the server itself refused is never papered over with an old answer.

@@ -21,7 +21,7 @@ const TTL = {
 };
 
 /** What we tell the caller when something went wrong and the server didn't say. */
-const FALLBACK = 'ShulGo couldn’t be reached. Check the network and try again.';
+const FALLBACK = 'ShulGo couldn’t be reached.';
 
 const seconds = () => Date.now() / 1000;
 
@@ -32,8 +32,14 @@ export class ShulGoApi {
      * @param {string} opts.apiKey      sg_live_… (Admin › System › API & apps)
      * @param {Function} opts.transport (url, {headers, timeout}) => {status, body, headers}
      * @param {number} [opts.timeout]   seconds
+     * @param {import('./cache.js').Cache} [opts.cache]
+     *        where good answers are written down, so a request that fails can be answered from the last
+     *        one instead of with nothing. Leave it out and the client simply has no memory.
+     * @param {() => boolean} [opts.isOnline]
+     *        what the machine says about the network. When it says no, we don't sit through a timeout
+     *        to find out — we go straight to what was written down.
      */
-    constructor({ baseUrl, apiKey, transport, timeout = 15 } = {}) {
+    constructor({ baseUrl, apiKey, transport, timeout = 15, cache = null, isOnline = null } = {}) {
         if (typeof transport !== 'function')
             throw new Error('ShulGoApi needs a transport; see gnome/transport.js.');
 
@@ -41,7 +47,9 @@ export class ShulGoApi {
         this._key = apiKey || '';
         this._transport = transport;
         this._timeout = timeout;
-        this._cache = new Map();    // url -> {at, value}
+        this._cache = new Map();    // url -> {at, value}; this minute's answers
+        this._kept = cache;         // the same answers, written down for when we're offline
+        this._isOnline = isOnline;
         this._inFlight = new Map(); // url -> Promise
     }
 
@@ -54,8 +62,15 @@ export class ShulGoApi {
         this.forget();
     }
 
+    /** Forgets this minute's answers. What's written down for offline use is left alone. */
     forget() {
         this._cache.clear();
+    }
+
+    /** Throws away the written-down answers too. */
+    forgetEverything() {
+        this._cache.clear();
+        this._kept?.clear();
     }
 
     get hasKey() {
@@ -170,21 +185,63 @@ export class ShulGoApi {
             };
         }
 
+        // No point sitting through a fifteen-second timeout to be told what the machine already knows.
+        if (this._isOnline && this._isOnline() === false) {
+            return this._fallback(url, path, {
+                ok: false, code: 'offline', message: 'This computer is offline.', status: 0,
+            });
+        }
+
         const job = this._fetch(url).then((value) => {
             this._inFlight.delete(url);
             // Only good answers are kept; an error should be retried, not remembered.
-            if (value.ok)
+            if (value.ok) {
                 this._cache.set(url, { at: seconds(), value });
+                this._kept?.set(url, { data: value.data, meta: value.meta });
 
-            return value;
+                return value;
+            }
+
+            return this._fallback(url, path, value);
         }).catch((e) => {
             this._inFlight.delete(url);
 
-            return { ok: false, code: 'network', message: e?.message || FALLBACK, status: 0 };
+            return this._fallback(url, path, {
+                ok: false, code: 'network', message: e?.message || FALLBACK, status: 0,
+            });
         });
         this._inFlight.set(url, job);
 
         return job;
+    }
+
+    /**
+     * A request has failed. If we wrote down a good answer to the same question, hand that back instead
+     * of nothing — marked `stale`, with when it was taken and what went wrong, so the panel can say so
+     * plainly rather than pretending.
+     *
+     * An answer the server itself refused — a bad key, a key not allowed to read mikvaos — is not a
+     * network problem and is never papered over with an old one.
+     */
+    _fallback(url, path, failure) {
+        const serverSaidNo = failure.status >= 400 && failure.status < 500;
+        if (serverSaidNo)
+            return failure;
+
+        const kept = this._kept?.getUsable(url, path);
+        if (!kept)
+            return failure;
+
+        return {
+            ok: true,
+            data: kept.value.data,
+            meta: kept.value.meta ?? {},
+            status: failure.status,
+            stale: true,
+            cachedAt: kept.at,
+            why: failure.code,
+            whyMessage: failure.message,
+        };
     }
 
     async _fetch(url) {

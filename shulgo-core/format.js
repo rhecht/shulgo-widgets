@@ -194,7 +194,7 @@ function dateOnly(isoDate) {
     return new Date(y, m - 1, d, 12, 0, 0);
 }
 
-/** Today as Y-M-D in local time. */
+/** A date as Y-M-D in local time; today by default. */
 export function todayIso(now = new Date()) {
     const pad = (n) => String(n).padStart(2, '0');
 
@@ -278,6 +278,71 @@ export function escapeMarkup(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
+}
+
+/** "from 1:45 PM", or "from yesterday" once it's no longer today's. */
+export function takenAt(unix) {
+    if (!unix)
+        return '';
+    const when = new Date(unix * 1000);
+    const sameDay = todayIso(when) === todayIso();
+    let clock;
+    try {
+        clock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(when);
+    } catch {
+        clock = `${when.getHours()}:${String(when.getMinutes()).padStart(2, '0')}`;
+    }
+
+    if (sameDay)
+        return `from ${clock}`;
+
+    const days = Math.round((dateOnly(todayIso()) - dateOnly(todayIso(when))) / 86400000);
+    if (days === 1)
+        return `from yesterday, ${clock}`;
+
+    let day;
+    try {
+        day = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(when);
+    } catch {
+        day = todayIso(when);
+    }
+
+    return `from ${day}, ${clock}`;
+}
+
+/**
+ * What to say when ShulGo can't be reached. Kept here so the top-bar widget, the window and the Mac
+ * panel all say it the same way — and say it kindly: this is a thing you glance at on your way out of
+ * the door, not a server you are administering.
+ *
+ * @param {object} state the store's state
+ * @param {boolean} hasAnything whether there is saved data to show behind the message
+ * @returns {{title: string, body: string, tone: string}|null} null when all is well
+ */
+export function offlineNotice(state, hasAnything) {
+    if (!state?.why)
+        return null;
+
+    const offline = state.why === 'offline';
+    const taken = takenAt(state.staleSince);
+
+    if (hasAnything) {
+        return {
+            tone: 'resting',
+            title: offline ? 'You’re offline' : 'ShulGo isn’t answering',
+            body: taken
+                ? `This is the list ${taken}. It’ll catch up on its own.`
+                : 'Showing what was here a moment ago. It’ll catch up on its own.',
+        };
+    }
+
+    return {
+        tone: 'resting',
+        title: offline ? 'You’re offline' : 'ShulGo isn’t answering just now',
+        body: offline
+            ? 'Nothing saved yet to show you. The moment you’re back, this fills itself in.'
+            : 'Nothing saved yet to show you. It keeps trying in the background.',
+    };
 }
 
 /** "Updated 2 min ago", for the footer. */

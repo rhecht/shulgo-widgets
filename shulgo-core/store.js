@@ -12,6 +12,9 @@
 
 import { minutesUntil, nowUnix, todayIso, toUnix } from './format.js';
 
+/** When requests keep failing, wait longer each time rather than hammering a network that isn't there. */
+const BACKOFF_CAP = 900; // 15 minutes
+
 function warn(message, error) {
     try {
         console.warn(`ShulGo: ${message}`, error ?? '');
@@ -23,15 +26,21 @@ export class Store {
      * @param {import('./api.js').ShulGoApi} api
      * @param {object} config see gnome/settings.js Config — any object with the same getters will do
      * @param {object} locator something with resolve({fresh}) => {lat, lng, label, source}|null
+     * @param {{isOnline: () => boolean, onChange: (cb: (online: boolean) => void) => Function}} [network]
+     *        what the machine says about the network, so we can stop trying while it's down and start
+     *        again the moment it comes back.
      */
-    constructor(api, config, locator) {
+    constructor(api, config, locator, network = null) {
         this._api = api;
         this._config = config;
         this._locator = locator;
+        this._network = network;
         this._listeners = new Set();
         this._refreshTimer = null;
         this._tickTimer = null;
         this._busy = false;
+        this._failures = 0;
+        this._unwatchNetwork = network?.onChange?.((online) => this._networkChanged(online)) ?? null;
 
         this.state = {
             loading: false,
@@ -48,6 +57,14 @@ export class Store {
             updatedAt: null,      // unix seconds
             needsKey: !api.hasKey,
             needsPlace: false,
+
+            // How much of this is still to be trusted.
+            offline: false,       // the machine says there's no network
+            stale: false,         // what's shown was written down earlier, not fetched just now
+            staleSince: null,     // unix seconds: when it was taken
+            why: null,            // 'offline' | 'unreachable' | null
+            zmanimForDate: null,  // the date the zmanim were worked out for
+            nextTryAt: null,      // unix seconds: when we'll try again
         };
     }
 
@@ -72,31 +89,67 @@ export class Store {
 
     // ---- the clock --------------------------------------------------------------------------
 
-    /** Starts the half-minute tick and the periodic refresh. */
+    /** Starts the half-minute tick and the refresh that follows it. */
     start() {
         this.stop();
+        this._running = true;
         this._tickTimer = setInterval(() => {
             this._dropPast();
             this._emit('tick');
         }, 30_000);
-        this._refreshTimer = setInterval(() => {
-            this.refresh();
-        }, Math.max(60, this._config.refreshSeconds) * 1000);
+        this._scheduleRefresh();
     }
 
     stop() {
+        this._running = false;
         if (this._tickTimer)
             clearInterval(this._tickTimer);
         if (this._refreshTimer)
-            clearInterval(this._refreshTimer);
+            clearTimeout(this._refreshTimer);
         this._tickTimer = null;
         this._refreshTimer = null;
     }
 
     /** The refresh interval changed. */
     restartTimers() {
-        if (this._tickTimer || this._refreshTimer)
+        if (this._running)
             this.start();
+    }
+
+    /**
+     * The next attempt. Normally the interval from settings; after a run of failures, longer each time
+     * up to a quarter of an hour, because a network that isn't there won't be there a second sooner for
+     * being asked more often.
+     */
+    _scheduleRefresh() {
+        if (!this._running)
+            return;
+        if (this._refreshTimer)
+            clearTimeout(this._refreshTimer);
+
+        const base = Math.max(60, this._config.refreshSeconds);
+        const wait = this._failures === 0
+            ? base
+            : Math.min(base * (2 ** Math.min(this._failures, 6)), BACKOFF_CAP);
+
+        this.state.nextTryAt = nowUnix() + wait;
+        this._refreshTimer = setTimeout(() => {
+            this._refreshTimer = null;
+            this.refresh().finally(() => this._scheduleRefresh());
+        }, wait * 1000);
+    }
+
+    /** The machine's network came or went. */
+    _networkChanged(online) {
+        this.state.offline = !online;
+        if (!online) {
+            this._emit('changed');
+
+            return;
+        }
+        // Back from the dead: try again at once rather than waiting out a backoff.
+        this._failures = 0;
+        this.refresh({ fresh: true }).finally(() => this._scheduleRefresh());
     }
 
     // ---- asking ShulGo ----------------------------------------------------------------------
@@ -155,12 +208,23 @@ export class Store {
             ]);
 
             // Minyanim are the one list the widget can't do without, so only that one sets the error.
+            // An answer that came out of the cache still counts as ok — it just isn't fresh, and the
+            // panel is told so rather than being handed an error and an empty list.
             if (minyanim.ok) {
                 this.state.minyanim = Array.isArray(minyanim.data) ? minyanim.data : [];
                 this.state.minyanimMeta = minyanim.meta ?? {};
                 this.state.error = null;
+                this.state.stale = Boolean(minyanim.stale);
+                this.state.staleSince = minyanim.stale ? minyanim.cachedAt : null;
+                this.state.why = minyanim.stale ? (minyanim.why === 'offline' ? 'offline' : 'unreachable') : null;
+                this.state.offline = minyanim.why === 'offline';
+                this._failures = minyanim.stale ? this._failures + 1 : 0;
             } else {
                 this.state.error = { code: minyanim.code, message: minyanim.message };
+                this.state.stale = false;
+                this.state.why = minyanim.code === 'offline' ? 'offline' : 'unreachable';
+                this.state.offline = minyanim.code === 'offline';
+                this._failures += 1;
             }
 
             if (events.ok)
@@ -177,6 +241,9 @@ export class Store {
             if (zmanim.ok) {
                 this.state.zmanim = zmanim.data ?? {};
                 this.state.zmanimMeta = zmanim.meta ?? {};
+                // Zmanim belong to one day. Yesterday's, handed back while we're offline, are simply
+                // wrong, so the day they were worked out for travels with them and the panel checks it.
+                this.state.zmanimForDate = this.state.zmanimMeta.date ?? null;
             }
 
             if (calendar.ok) {
@@ -185,7 +252,10 @@ export class Store {
             }
 
             this._dropPast();
-            this.state.updatedAt = nowUnix();
+            // "Updated" means the last time ShulGo actually answered. A failed attempt, and an answer
+            // served out of the cache, are both something else — the panel says which.
+            if (!this.state.error && !this.state.stale)
+                this.state.updatedAt = nowUnix();
         } finally {
             this._busy = false;
             this.state.loading = false;
@@ -225,6 +295,16 @@ export class Store {
             ?? this.nextMinyan;
     }
 
+    /** True when the zmanim on hand were worked out for a different day — so not today's. */
+    get zmanimOutOfDate() {
+        return Boolean(this.state.zmanimForDate) && this.state.zmanimForDate !== todayIso();
+    }
+
+    /** Is there anything at all to show, fresh or not? */
+    get hasAnything() {
+        return this.state.minyanim.length > 0 || Object.keys(this.state.zmanim).length > 0;
+    }
+
     /** Minutes until the headline minyan, worked out right now. */
     get nextMinyanIn() {
         const next = this.headline;
@@ -234,6 +314,8 @@ export class Store {
 
     destroy() {
         this.stop();
+        this._unwatchNetwork?.();
+        this._unwatchNetwork = null;
         this._listeners.clear();
         this._locator?.destroy?.();
     }

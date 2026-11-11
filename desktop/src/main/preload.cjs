@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('shulgo', {
     openSettings: () => ipcRenderer.invoke('shulgo:openSettings'),
     hidePanel: () => ipcRenderer.invoke('shulgo:hidePanel'),
     quit: () => ipcRenderer.invoke('shulgo:quit'),
+    reportNetwork: (online) => ipcRenderer.invoke('shulgo:network', online),
 
     searchPlaces: (text) => ipcRenderer.invoke('shulgo:searchPlaces', text),
     setPlace: (match) => ipcRenderer.invoke('shulgo:setPlace', match),

@@ -360,3 +360,101 @@ footer button:hover {
 .credit button:hover {
   color: var(--accent);
 }
+
+/* ---- when ShulGo can't be reached --------------------------------------------------------- */
+
+/* A strip above a list we couldn't refresh. Warm, not alarming: what's underneath is still useful. */
+.offline-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 9px 11px;
+  border-radius: var(--radius);
+  background: linear-gradient(to right, rgba(242, 183, 5, 0.14), rgba(28, 39, 64, 0.72) 65%);
+  border: 1px solid rgba(242, 183, 5, 0.3);
+}
+
+.offline-icon {
+  flex: 0 0 20px;
+  line-height: 0;
+  color: var(--gold);
+}
+
+.offline-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.offline-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.offline-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.offline-body {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.offline-retry {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gold-light);
+  background: rgba(242, 183, 5, 0.14);
+}
+
+.offline-retry:hover {
+  background: rgba(242, 183, 5, 0.28);
+  color: #fff;
+}
+
+/* The whole panel, when there's nothing saved to show behind the message. */
+.resting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 26px 10px;
+  padding: 26px 20px;
+  border-radius: 16px;
+  text-align: center;
+  background: var(--veil-raised);
+  border: 1px solid var(--veil-line);
+}
+
+.resting-art {
+  line-height: 0;
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+.resting-art svg {
+  width: 44px;
+  height: 44px;
+  fill: currentColor;
+}
+
+.resting-title {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.resting-body {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 28ch;
+}

@@ -143,3 +143,26 @@ Shell: `dbus-run-session -- gnome-shell --nested --wayland`.
 Answers are cached for as long as they're good for — a minute for minyanim, six hours for zmanim — and two
 requests for the same thing at once share one answer. Countdowns tick locally, so the bar stays right
 between requests instead of asking every minute.
+
+## When ShulGo can't be reached
+
+Every good answer is also written down, in `~/.cache/jewbuntu-shulgo/answers.json`. When a request fails
+— the machine is offline, the site is down, the train went into a tunnel — the last one is shown
+instead, under a quiet strip saying where it came from and when:
+
+> **You're offline** · This is the list from 1:45 PM. It'll catch up on its own.  ⟨Try now⟩
+
+The list underneath stays usable: countdowns keep ticking locally and minyanim whose time has passed
+drop off, so nothing is shown as upcoming when it isn't. The footer says "from 1:45 PM" rather than
+"Updated just now", because that is the one thing the panel must not get wrong. Zmanim belong to a single
+day, so if the saved ones are yesterday's they are labelled as such rather than passed off as today's.
+
+With nothing saved yet, you get a friendly resting state instead of an error, and it keeps trying in the
+background.
+
+It uses GNOME's own `NetworkMonitor`, so it knows about a captive portal or a link with no route — which
+means no fifteen-second timeout before it gives you the saved list. Repeated failures back off, up to a
+quarter of an hour; the moment the network returns it tries again at once.
+
+A key the server itself refused — invalid, or not allowed to read mikvaos — is never papered over with an
+old answer. That is not a network problem, and you want to be told.

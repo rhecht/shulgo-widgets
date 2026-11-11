@@ -455,3 +455,55 @@
   padding-top: 4px;
   color: #8f9bad;
 }
+
+/* ---- when ShulGo can't be reached --------------------------------------------------------- */
+
+/* A strip above a list we couldn't refresh. Warm, not alarming: what's underneath is still useful. */
+.shulgo-offline {
+  spacing: 10px;
+  margin-bottom: 4px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  background-gradient-direction: horizontal;
+  background-gradient-start: rgba(242, 183, 5, 0.16);
+  background-gradient-end: rgba(28, 39, 64, 0.72);
+  border: 1px solid rgba(242, 183, 5, 0.3);
+}
+
+.shulgo-offline-icon {
+  icon-size: 20px;
+  color: #f2b705;
+}
+
+.shulgo-offline-title {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.shulgo-offline-body {
+  font-size: 0.82em;
+  color: #a9b3c2;
+}
+
+.shulgo-offline-retry {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #ffd54f;
+  background-color: rgba(242, 183, 5, 0.16);
+}
+
+.shulgo-offline-retry:hover,
+.shulgo-offline-retry:focus {
+  background-color: rgba(242, 183, 5, 0.3);
+  color: #ffffff;
+}
+
+/* The cloud over the whole-panel version, when there is nothing saved behind the message. */
+.shulgo-resting-icon {
+  icon-size: 40px;
+  color: #f2b705;
+  margin-bottom: 6px;
+}

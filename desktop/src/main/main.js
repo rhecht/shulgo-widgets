@@ -13,12 +13,14 @@ import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { ShulGoApi } from '../../shulgo-core/api.js';
+import { Cache } from '../../shulgo-core/cache.js';
 import { Store } from '../../shulgo-core/store.js';
 import * as F from '../../shulgo-core/format.js';
 
 import { Settings, looksLikeKey } from './settings.js';
 import { makeTransport } from './transport.js';
 import { Locator } from './location.js';
+import { makeNetwork, makeStorage } from './offline.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
@@ -35,6 +37,8 @@ protocol.registerSchemesAsPrivileged([
 let settings;
 let api;
 let store;
+let cache = null;
+let network = null;
 let tray = null;
 let panel = null;
 let settingsWindow = null;
@@ -89,14 +93,19 @@ function updateTray() {
             title = `${words} · ${pill}`;
     }
 
-    // Only macOS shows text beside a tray icon; elsewhere it goes in the tooltip.
-    if (process.platform === 'darwin')
-        tray.setTitle(title ? ` ${title}` : '');
+    // A countdown worked out from an old list shouldn't look as certain as a fresh one. It still shows —
+    // you want to know what there was — but with a dot in front of it, and the tooltip says why.
+    const notice = F.offlineNotice(store.state, store.hasAnything);
+    if (process.platform === 'darwin') {
+        const shown = title ? `${notice ? '· ' : ''}${title}` : (notice ? '·' : '');
+        tray.setTitle(shown ? ` ${shown}` : '');
+    }
 
     const place = store.state.place?.label;
-    tray.setToolTip(next
+    const line = next
         ? `${F.tefillahLabel(next.tefillah)} ${next.display_time} — ${F.minyanSubtitle(next, settings.get('travelMode'))}`
-        : `ShulGo${place ? ` — ${place}` : ''}`);
+        : `ShulGo${place ? ` — ${place}` : ''}`;
+    tray.setToolTip(notice ? `${line}\n${notice.title}. ${notice.body}` : line);
 }
 
 function buildTray() {
@@ -248,6 +257,9 @@ function viewState() {
         updatedAt: s.updatedAt,
         needsKey: s.needsKey,
         needsPlace: s.needsPlace,
+        notice: F.offlineNotice(s, store.hasAnything),
+        zmanimOutOfDate: store.zmanimOutOfDate,
+        zmanimForDate: s.zmanimForDate,
         today: s.today,
         hebrewLine: F.hebrewDayLine(s.today),
         candles: F.candleLighting(s.today),
@@ -283,7 +295,10 @@ function viewState() {
             directions: F.mapsUri(F.minyanDestination(m)),
         })),
         total: s.minyanim.length,
-        updatedLabel: F.updatedAgo(s.updatedAt),
+        // When what's shown came out of the cache, the footer says when it was taken, not when we
+        // last tried — "Updated just now" over an hours-old list is the one lie the panel must not tell.
+        updatedLabel: s.stale ? F.takenAt(s.staleSince) : F.updatedAgo(s.updatedAt),
+        updatedAt: s.updatedAt,
     };
 }
 
@@ -304,6 +319,7 @@ function registerIpc() {
     });
     ipcMain.handle('shulgo:openSettings', () => openSettings());
     ipcMain.handle('shulgo:hidePanel', () => panel?.hide());
+    ipcMain.handle('shulgo:network', (_event, online) => network.report(Boolean(online)));
     ipcMain.handle('shulgo:quit', () => {
         quitting = true;
         app.quit();
@@ -379,16 +395,22 @@ function start() {
     settings = new Settings();
     const config = settings.asConfig();
 
+    network = makeNetwork();
+    cache = new Cache(makeStorage());
+
     api = new ShulGoApi({
         baseUrl: settings.get('apiBaseUrl'),
         apiKey: settings.apiKey,
         transport: makeTransport(),
+        cache,
+        isOnline: network.isOnline,
     });
-    store = new Store(api, config, new Locator(api, config));
+    store = new Store(api, config, new Locator(api, config), network);
 
     store.connect(() => {
         updateTray();
         sendState();
+        cache.save();
     });
 
     settings.watch((moved) => {
@@ -437,5 +459,6 @@ if (!app.requestSingleInstanceLock()) {
     app.on('before-quit', () => {
         quitting = true;
         store?.destroy();
+        cache?.save();
     });
 }

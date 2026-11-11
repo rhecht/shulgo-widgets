@@ -21,6 +21,9 @@ const TEFILLOS = [
 
 const PIN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6a4.4 4.4 0 0 0-4.4 4.4c0 3.1 3.84 7.7 4 7.9a.5.5 0 0 0 .78 0c.17-.2 4.02-4.8 4.02-7.9A4.4 4.4 0 0 0 8 1.6zm0 6.1a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4z"/></svg>';
 
+/** A cloud with a line through it — the "we can't reach it" mark, drawn soft rather than alarming. */
+const CLOUD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 18.5a4.2 4.2 0 0 1-.5-8.37 5.6 5.6 0 0 1 10.6-1.48 3.9 3.9 0 0 1 3.2 3.85 3.9 3.9 0 0 1-3.9 4H7.2zm0-1.8h9.4a2.1 2.1 0 0 0 0-4.2h-.9v-.9a3.8 3.8 0 0 0-7.36-1.3l-.25.68-.72.07A2.4 2.4 0 0 0 7.2 16.7z"/><path d="M3.4 3.1a.9.9 0 0 0-1.27 1.27l17.5 17.5a.9.9 0 0 0 1.27-1.27L3.4 3.1z" opacity=".55"/></svg>';
+
 const el = {
     place: document.getElementById('place'),
     hebrew: document.getElementById('hebrew'),
@@ -158,6 +161,47 @@ function mikvahRow(m) {
 
 // ---- whole-panel states ----------------------------------------------------------------------
 
+/**
+ * The quiet strip above a list we couldn't refresh. Deliberately not an error: the list under it is
+ * still worth reading, and the thing mends itself.
+ */
+function offlineStrip(n) {
+    const strip = node('div', 'offline-strip');
+
+    const icon = node('span', 'offline-icon');
+    icon.innerHTML = CLOUD;
+    strip.append(icon);
+
+    const words = node('div', 'offline-words');
+    words.append(node('div', 'offline-title', n.title));
+    words.append(node('div', 'offline-body', n.body));
+    strip.append(words);
+
+    const again = node('button', 'offline-retry', 'Try now');
+    again.addEventListener('click', () => window.shulgo.refresh());
+    strip.append(again);
+
+    return strip;
+}
+
+/** The whole panel, when there is nothing saved to show behind the message. */
+function restingState(n) {
+    const box = node('div', 'resting');
+
+    const art = node('div', 'resting-art');
+    art.innerHTML = CLOUD;
+    box.append(art);
+
+    box.append(node('div', 'resting-title', n.title));
+    box.append(node('div', 'resting-body', n.body));
+
+    const again = node('button', 'primary', 'Try now');
+    again.addEventListener('click', () => window.shulgo.refresh());
+    box.append(again);
+
+    return box;
+}
+
 function notice({ title, body, actionLabel, onAction, error = false }) {
     const box = node('div', `notice${error ? ' error' : ''}`);
     box.append(node('h2', null, title));
@@ -196,6 +240,13 @@ function render() {
 
     el.content.replaceChildren();
 
+    // Nothing saved to fall back on: say so kindly and get out of the way.
+    if (state.notice && !state.minyanim.length && !state.needsKey && !state.needsPlace) {
+        el.content.append(restingState(state.notice));
+
+        return;
+    }
+
     if (state.needsKey) {
         el.content.append(notice({
             title: 'Add your ShulGo API key',
@@ -217,6 +268,9 @@ function render() {
 
         return;
     }
+
+    if (state.notice)
+        el.content.append(offlineStrip(state.notice));
 
     if (tab === 'minyanim')
         renderMinyanim();
@@ -325,6 +379,14 @@ function renderZmanim() {
         return;
     }
 
+    // Zmanim belong to one day; yesterday's must not pass for today's.
+    if (state.zmanimOutOfDate) {
+        el.content.append(notice({
+            title: 'These zmanim are from another day',
+            body: `Worked out for ${state.zmanimForDate}. Today’s come down as soon as ShulGo is back.`,
+        }));
+    }
+
     for (const z of state.zmanim) {
         const row = node('div', `zman${z.isNext ? ' next' : ''}${z.past && !z.isNext ? ' past' : ''}`);
         row.append(node('span', 'label', z.label));
@@ -362,6 +424,13 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'r' && (event.metaKey || event.ctrlKey))
         window.shulgo.refresh();
 });
+
+// The panel is an ordinary web page, so it is the part of the app that hears the network come and go.
+// It passes that on, which saves the main process sitting through timeouts to find out.
+const tellMain = () => window.shulgo.reportNetwork(navigator.onLine);
+window.addEventListener('online', tellMain);
+window.addEventListener('offline', tellMain);
+tellMain();
 
 window.shulgo.onState((next) => {
     state = next;
