@@ -68,6 +68,46 @@ install_extension() {
   say "installed in ${EXT_DIR}"
 }
 
+# An icon directory is only a theme if it has an index.theme. ~/.local/share/icons/hicolor usually has
+# none, because nothing has ever had reason to make one there.
+#
+# The trap: gtk-update-icon-cache -t ("ignore the theme index") will happily write an icon-theme.cache
+# into such a directory, and GTK then reads that cache in place of scanning — so an icon that is sitting
+# right there is never found. Which is a blank square in the app grid.
+#
+# So: write the index.theme first, THEN build the cache. Both are standard, and the index is the same
+# one every distribution ships — it only lists which directories hold what.
+refresh_icons() {
+  local theme="${HOME}/.local/share/icons/hicolor"
+  [ -d "${theme}" ] || return 0
+
+  if [ ! -f "${theme}/index.theme" ]; then
+    cat > "${theme}/index.theme" <<'INDEX'
+[Icon Theme]
+Name=Hicolor
+Comment=Fallback icon theme
+Hidden=true
+Directories=scalable/apps,symbolic/apps
+
+[scalable/apps]
+Context=Applications
+Size=128
+MinSize=16
+MaxSize=512
+Type=Scalable
+
+[symbolic/apps]
+Context=Applications
+Size=16
+MinSize=16
+MaxSize=512
+Type=Scalable
+INDEX
+  fi
+
+  command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -f "${theme}" 2>/dev/null || true
+}
+
 install_app() {
   step "ShulGo app"
   mkdir -p "${APP_DIR}" "${BIN_DIR}" "${DESKTOP_DIR}" "${ICON_DIR}" "${SYMBOLIC_DIR}"
@@ -89,7 +129,7 @@ LAUNCHER
     > "${DESKTOP_DIR}/org.jewbuntu.ShulGo.desktop"
 
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${DESKTOP_DIR}" || true
-  command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+  refresh_icons
 
   say "installed in ${APP_DIR}"
   say "launcher: ${BIN_DIR}/shulgo"
@@ -117,6 +157,15 @@ uninstall() {
   rm -rf "${EXT_DIR}" "${APP_DIR}"
   rm -f "${BIN_DIR}/shulgo" "${DESKTOP_DIR}/org.jewbuntu.ShulGo.desktop"
   rm -f "${ICON_DIR}/org.jewbuntu.ShulGo.svg" "${SYMBOLIC_DIR}/org.jewbuntu.ShulGo-symbolic.svg"
+  # If ours were the only icons there, take the theme we made with them. Leaving the cache behind is
+  # worse than leaving nothing: it still lists an icon whose file has gone, and GTK trusts the per-user
+  # hicolor cache ahead of /usr/share — so a system-wide ShulGo installed afterwards draws a blank tile.
+  if [ -d "${HOME}/.local/share/icons/hicolor" ] \
+     && [ -z "$(find "${HOME}/.local/share/icons/hicolor" \( -name '*.svg' -o -name '*.png' \) -print 2>/dev/null)" ]; then
+    rm -f "${HOME}/.local/share/icons/hicolor/index.theme" "${HOME}/.local/share/icons/hicolor/icon-theme.cache"
+  else
+    refresh_icons
+  fi
   rm -f "${SCHEMA_DIR}/${SCHEMA_ID}.gschema.xml"
   command -v glib-compile-schemas >/dev/null 2>&1 && glib-compile-schemas "${SCHEMA_DIR}" 2>/dev/null || true
   say "gone. Your API key (~/.config/jewbuntu/shulgo.conf) and your settings were left alone."
@@ -129,6 +178,9 @@ finish() {
   say "   (on Xorg, log out and back in first)"
   say "2. Open its settings:  gnome-extensions prefs ${UUID}"
   say "3. Paste the API key you made in ShulGo under Admin › System › API & apps."
+  printf '\n'
+  say "The ShulGo app shows up in the app grid without its icon until GNOME reads the"
+  say "icon theme again — log out and back in, and it will be there."
   printf '\n'
 }
 
