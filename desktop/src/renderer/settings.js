@@ -97,9 +97,16 @@ function render() {
     if (document.activeElement !== $('apiBaseUrl'))
         $('apiBaseUrl').value = s.apiBaseUrl;
 
-    $('current').innerHTML = state.place?.label
-        ? `Looking near <b>${state.place.label}</b>.`
-        : 'No place set yet.';
+    // The place name comes from ShulGo, so it goes in as text with the bold part built around it.
+    const current = $('current');
+    current.replaceChildren();
+    if (state.place?.label) {
+        const name = document.createElement('b');
+        name.textContent = state.place.label;
+        current.append('Looking near ', name, '.');
+    } else {
+        current.textContent = 'No place set yet.';
+    }
 
     $('keyPath').textContent = `Kept in ${s.keyFilePath}`;
     $('removeKey').hidden = !s.hasKey;

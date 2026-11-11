@@ -35,6 +35,12 @@ const el = {
 let state = null;
 let tab = 'minyanim';
 
+/** A little pill beside a row's title. Built as a node, never as a string of HTML: "Women" and the rest
+ * come from the API, and the same ampersand that trips Pango on the Linux build would be markup here. */
+function badge(text, kind) {
+    return node('span', `badge${kind ? ` ${kind}` : ''}`, text);
+}
+
 function node(tag, className, text) {
     const n = document.createElement(tag);
     if (className)
@@ -103,11 +109,11 @@ function minyanRow(m) {
     const body = node('div', 'body');
     const title = node('div', 'title', m.tefillah);
     if (m.kind === 'live')
-        title.insertAdjacentHTML('beforeend', '<span class="badge live">Live</span>');
+        title.append(badge('Live', 'live'));
     else if (m.kind === 'standing')
-        title.insertAdjacentHTML('beforeend', '<span class="badge">Standing</span>');
+        title.append(badge('Standing'));
     if (m.urgency === 'missed')
-        title.insertAdjacentHTML('beforeend', '<span class="badge missed">Too far</span>');
+        title.append(badge('Too far', 'missed'));
     body.append(title);
     body.append(node('div', 'sub', m.subtitle));
     if (m.note)
@@ -139,7 +145,7 @@ function mikvahRow(m) {
     const body = node('div', 'body');
     const title = node('div', 'title', m.name ?? '');
     for (const whom of m.whom)
-        title.insertAdjacentHTML('beforeend', `<span class="badge mikvah">${whom}</span>`);
+        title.append(badge(whom, 'mikvah'));
     body.append(title);
     body.append(node('div', 'sub', m.whereLine));
 

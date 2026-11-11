@@ -243,7 +243,8 @@ class ShulGoWindow extends Adw.ApplicationWindow {
         header.pack_end(this._menuButton());
         header.pack_end(this._searchToggle);
 
-        this._banner = new Adw.Banner({ revealed: false, button_label: 'Try again' });
+        // The banner shows whatever ShulGo said went wrong, which is not ours to parse as markup.
+        this._banner = new Adw.Banner({ revealed: false, button_label: 'Try again', use_markup: false });
         this._banner.connect('button-clicked', () => this._store.refresh({ fresh: true }));
 
         const contentBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
@@ -432,7 +433,8 @@ class ShulGoWindow extends Adw.ApplicationWindow {
             this._status(box, {
                 icon: 'dialog-password-symbolic',
                 title: 'Add your ShulGo API key',
-                description: 'Make a key in ShulGo under Admin › System › API & apps, then paste it into Settings.',
+                // AdwStatusPage reads its description as Pango markup, so the ampersand is written out.
+                description: 'Make a key in ShulGo under Admin › System › API &amp; apps, then paste it into Settings.',
                 actionLabel: 'Open Settings',
                 onAction: () => this.application.activate_action('preferences', null),
             });
@@ -564,6 +566,7 @@ class ShulGoWindow extends Adw.ApplicationWindow {
             title: `${item.display_time} · ${F.tefillahLabel(item.tefillah)}`,
             subtitle: F.minyanSubtitle(item, this._config.travelMode),
             activatable: true,
+            use_markup: false,
         });
 
         const dot = new Gtk.Image({
@@ -627,6 +630,7 @@ class ShulGoWindow extends Adw.ApplicationWindow {
                 subtitle: [event.when, event.where, event.online ? 'Online' : '', F.miles(event.distance_miles)]
                     .filter((x) => x).join(' · '),
                 activatable: true,
+                use_markup: false,
             });
             row.add_prefix(new Gtk.Label({
                 label: F.eventDate(event.date),
@@ -667,6 +671,7 @@ class ShulGoWindow extends Adw.ApplicationWindow {
                 subtitle: [whom, mikvah.address, mikvah.city, F.miles(mikvah.distance_mi)]
                     .filter((x) => x).join(' · '),
                 activatable: true,
+                use_markup: false,
             });
             row.add_prefix(new Gtk.Image({ icon_name: 'weather-showers-symbolic', css_classes: ['shulgo-mikvah-icon'] }));
 
@@ -723,6 +728,7 @@ class ShulGoWindow extends Adw.ApplicationWindow {
                 title: zman.label,
                 subtitle: zman.about || '',
                 css_classes: zman.isNext ? ['shulgo-zman-next'] : (zman.past ? ['dim-label'] : []),
+                use_markup: false,
             });
             row.add_suffix(new Gtk.Label({
                 label: zman.display,

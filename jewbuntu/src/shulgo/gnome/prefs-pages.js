@@ -46,7 +46,7 @@ function spinRow({ title, subtitle = null, settings, key, min, max, step }) {
 
 export function placePage(settings, apiFor) {
     const page = new Adw.PreferencesPage({
-        title: 'Where & when',
+        title: 'Where and when',
         icon_name: 'find-location-symbolic',
     });
 
@@ -68,6 +68,9 @@ export function placePage(settings, apiFor) {
         title: 'Matches',
         subtitle: 'Type a city, neighborhood or zip above, then press Enter.',
         visible: false,
+        // Its subtitle ends up carrying what was typed and what ShulGo said back, neither of which is
+        // ours to parse as markup.
+        use_markup: false,
     });
 
     const place = new Adw.EntryRow({
@@ -161,6 +164,7 @@ async function findPlace(settings, entryRow, expander, apiFor) {
             title: match.label,
             subtitle: match.shuls ? `${match.shuls} shul${match.shuls === 1 ? '' : 's'}` : null,
             activatable: true,
+            use_markup: false,
         });
         row.connect('activated', () => {
             settings.set_string('place', match.label);
@@ -243,7 +247,8 @@ export function accountPage(settings, apiFor) {
 
     const group = new Adw.PreferencesGroup({
         title: 'API key',
-        description: 'Make a key in ShulGo under Admin › System › API & apps, then paste it here. '
+        // Markup, like AdwStatusPage's description — so the ampersand is written out.
+        description: 'Make a key in ShulGo under Admin › System › API &amp; apps, then paste it here. '
             + 'It is kept in ~/.config/jewbuntu/shulgo.conf, readable only by you.',
     });
     page.add(group);
@@ -251,7 +256,8 @@ export function accountPage(settings, apiFor) {
     const entry = new Adw.PasswordEntryRow({ title: 'Key', text: loadApiKey() });
     group.add(entry);
 
-    const status = new Adw.ActionRow({ title: 'Not checked yet', subtitle: '' });
+    // Its subtitle carries ShulGo's own message when a key is refused.
+    const status = new Adw.ActionRow({ title: 'Not checked yet', subtitle: '', use_markup: false });
     group.add(status);
 
     const buttons = new Gtk.Box({ spacing: 8, halign: Gtk.Align.END, margin_top: 8 });
