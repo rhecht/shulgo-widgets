@@ -558,17 +558,24 @@ class ShulGoIndicator extends PanelMenu.Button {
                 `Worked out for ${this._store.state.zmanimForDate}. Today’s come down as soon as ShulGo is back.`));
         }
 
-        for (const zman of rows) {
+        // The zmanim are one table, not a list of separate things, so they sit in one card with hairlines
+        // between them — the way the window's AdwPreferencesGroup draws them. The other tabs give each
+        // row its own card because each row is its own thing.
+        const card = new St.BoxLayout({ vertical: true, style_class: 'shulgo-zman-card', x_expand: true });
+        rows.forEach((zman, i) => {
+            const last = i === rows.length - 1;
             const row = new St.BoxLayout({
-                style_class: `shulgo-zman${zman.isNext ? ' shulgo-zman-next' : ''}${zman.past ? ' shulgo-zman-past' : ''}`,
+                style_class: `shulgo-zman${zman.isNext ? ' shulgo-zman-next' : ''}`
+                    + `${zman.past ? ' shulgo-zman-past' : ''}${last ? '' : ' shulgo-zman-ruled'}`,
                 x_expand: true,
             });
             row.add_child(new St.Label({ text: zman.label, style_class: 'shulgo-zman-label', x_expand: true }));
             row.add_child(new St.Label({ text: zman.display, style_class: 'shulgo-zman-time' }));
             if (zman.past && !zman.isNext)
                 row.opacity = 130;
-            this._content.add_child(row);
-        }
+            card.add_child(row);
+        });
+        this._content.add_child(card);
 
         const candles = F.candleLighting(this._store.state.today);
         if (candles)

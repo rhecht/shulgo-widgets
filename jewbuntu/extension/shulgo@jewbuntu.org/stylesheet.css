@@ -356,6 +356,20 @@
 
 /* ---- zmanim ----------------------------------------------------------------------------- */
 
+/* One card for the whole table, so the rows have a ground of their own however the menu behind them
+ * is drawn — and so the tab doesn't look bare beside the others, whose rows each carry their own. */
+.shulgo-zman-card {
+  border-radius: 13px;
+  padding: 2px 0;
+  background-color: rgba(28, 39, 64, 0.72);
+  border: 1px solid rgba(143, 179, 234, 0.1);
+}
+
+/* A hairline between rows; the last one goes without. */
+.shulgo-zman-ruled {
+  border-bottom: 1px solid rgba(143, 179, 234, 0.09);
+}
+
 .shulgo-zman {
   spacing: 8px;
   padding: 6px 10px;
@@ -378,6 +392,11 @@
 
 .shulgo-zman-time {
   font-weight: 600;
+}
+
+/* The next zman still stands out, but now within the card rather than against the menu. */
+.shulgo-zman-next {
+  border-radius: 10px;
 }
 
 /* ---- notices, empty states, footer ------------------------------------------------------ */

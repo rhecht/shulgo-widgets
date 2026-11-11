@@ -388,14 +388,18 @@ function renderZmanim() {
         }));
     }
 
+    // The zmanim are one table, not a list of separate things, so they share one card. The other tabs
+    // give each row its own, because each row there is its own thing.
+    const card = node('div', 'zman-card');
     for (const z of state.zmanim) {
         const row = node('div', `zman${z.isNext ? ' next' : ''}${z.past && !z.isNext ? ' past' : ''}`);
         row.append(node('span', 'label', z.label));
         row.append(node('span', 'at', z.display));
         if (z.isNext && z.about)
             row.append(node('span', 'about', z.about));
-        el.content.append(row);
+        card.append(row);
     }
+    el.content.append(card);
 
     if (state.candles)
         el.content.append(node('div', 'credit', `Candle lighting ${state.candles}`));

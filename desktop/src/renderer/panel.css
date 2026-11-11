@@ -271,6 +271,20 @@ main {
 
 /* ---- zmanim ------------------------------------------------------------------------------ */
 
+/* One card for the whole table, so the rows have a ground of their own and the tab doesn't read as
+ * bare beside the others, whose rows each carry one. */
+.zman-card {
+  border-radius: var(--radius);
+  padding: 2px 0;
+  background: var(--veil-raised);
+  border: 1px solid var(--veil-line);
+  overflow: hidden;
+}
+
+.zman-card .zman:not(:last-child) {
+  border-bottom: 1px solid rgba(143, 179, 234, 0.09);
+}
+
 .zman {
   display: flex;
   /* The "about" line sits on its own row underneath, which needs the wrap; without it, it fights the
@@ -289,7 +303,6 @@ main {
 
 .zman.next {
   background: linear-gradient(to right, rgba(242, 183, 5, 0.26), rgba(242, 183, 5, 0.03));
-  border: 1px solid rgba(242, 183, 5, 0.42);
   color: #fff;
   font-weight: 700;
 }
