@@ -56,44 +56,12 @@
 
 /* ---- the glass the menu is made of ------------------------------------------------------- */
 
-/* The box-pointer around the menu only has to get out of the way, so whatever the theme would have
- * drawn behind our own box doesn't show as a ring around it. */
-.shulgo-pointer {
-  -arrow-background-color: transparent;
-  -arrow-border-color: transparent;
-  -arrow-border-width: 0;
-  background-color: transparent;
-}
-
-/* And the navy goes on OUR box, by our own class name.
+/* The menu's three layers — the box-pointer, the menu box and our own root — are styled inline, in
+ * applyGlass(). Not here, and not by class: a shell theme can restyle any class the Shell owns, and an
+ * extension stylesheet does not outrank a user theme. There is nothing to put in this file that a theme
+ * could not take back. See the comment on applyGlass for the full account.
  *
- * It used to go on .popup-menu-content, which is the Shell theme's. When that selector stopped
- * matching, the rule above still cleared the theme's background and nothing replaced it — so the menu
- * went transparent over the desktop and every one of the colours below, all of them written for a dark
- * surface, turned into light text on a light background. Hence: only our own classes from here down. */
-.shulgo-menu {
-  border-radius: 16px;
-  padding: 6px;
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
-}
-
-/* See-through navy, so the wallpaper and windows show through. */
-.shulgo-menu.shulgo-glass-tint {
-  background-color: rgba(11, 18, 32, 0.78);
-  border: 1px solid rgba(143, 179, 234, 0.2);
-}
-
-/* With a blur behind it, the glass can be thinner still. */
-.shulgo-menu.shulgo-glass-blur {
-  background-color: rgba(11, 18, 32, 0.62);
-  border: 1px solid rgba(143, 179, 234, 0.2);
-}
-
-/* For anyone who'd rather read than see through. */
-.shulgo-menu.shulgo-glass-solid {
-  background-color: #0b1220;
-  border: 1px solid #26324a;
-}
+ * Everything below is a class of our own on an actor of our own, which is a different matter. */
 
 .shulgo-menu-item {
   padding: 0;
@@ -208,11 +176,15 @@
   padding: 0 0 2px 0;
 }
 
+/* The chips carry a ground of their own rather than floating on the surface, the way the rows do.
+ * Pale text on a transparent chip is only legible if whatever is behind it is dark, and that is one
+ * assumption too many after the last two rounds of this. */
 .shulgo-chip {
   padding: 3px 11px;
   border-radius: 99px;
   font-size: 0.86em;
-  color: #c3cddc;
+  color: #e6ebf3;
+  background-color: rgba(28, 39, 64, 0.85);
   border: 1px solid rgba(143, 179, 234, 0.28);
 }
 
@@ -246,6 +218,24 @@
   border-radius: 13px;
   background-color: rgba(28, 39, 64, 0.72);
   border: 1px solid rgba(143, 179, 234, 0.1);
+}
+
+/* On the gold card, an amber countdown and grey subtitle are gold-on-gold. The dot still carries the
+ * urgency; these just have to be readable. */
+.shulgo-row-first .shulgo-countdown,
+.shulgo-row-first .shulgo-countdown-comfortable,
+.shulgo-row-first .shulgo-countdown-tight,
+.shulgo-row-first .shulgo-countdown-missed {
+  color: #fff6d6;
+}
+
+.shulgo-row-first .shulgo-row-subtitle {
+  color: #f3e8c4;
+}
+
+.shulgo-row-first .shulgo-row-title,
+.shulgo-row-first .shulgo-time {
+  color: #ffffff;
 }
 
 /* The one the top bar is counting down to. */
@@ -374,7 +364,7 @@
   spacing: 8px;
   padding: 6px 10px;
   border-radius: 10px;
-  color: #dbe2ec;
+  color: #e6ebf3;
 }
 
 .shulgo-zman-next {
@@ -388,6 +378,7 @@
 
 .shulgo-zman-label {
   font-size: 0.95em;
+  color: #e6ebf3;
 }
 
 .shulgo-zman-time {

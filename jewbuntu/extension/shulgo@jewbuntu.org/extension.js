@@ -124,12 +124,12 @@ class ShulGoIndicator extends PanelMenu.Button {
 
     _buildMenu() {
         this.menu.box.add_style_class_name('shulgo-menu');
-        this.applyGlass();
 
         const holder = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         holder.style_class = 'shulgo-menu-item';
 
         const root = new St.BoxLayout({ vertical: true, style_class: 'shulgo-root', x_expand: true });
+        this._rootBox = root;
 
         // Header: where we are, and the two buttons.
         const header = new St.BoxLayout({ style_class: 'shulgo-header', x_expand: true });
@@ -196,6 +196,8 @@ class ShulGoIndicator extends PanelMenu.Button {
 
         holder.add_child(root);
         this.menu.addMenuItem(holder);
+
+        this.applyGlass();
     }
 
     /**
@@ -208,15 +210,31 @@ class ShulGoIndicator extends PanelMenu.Button {
      */
     applyGlass() {
         const wanted = this._config.glass;
+        if (!this._rootBox)
+            return;
 
-        // The navy goes on our own box, never on a class the Shell theme owns. menu.box is the actor
-        // that carries the menu's background, and it already wears our "shulgo-menu" class, so styling
-        // it needs nothing from the theme and can't stop matching when the theme is rearranged.
-        // The box-pointer around it only has to get out of the way.
-        this.menu.actor.add_style_class_name('shulgo-pointer');
-        for (const name of ['blur', 'tint', 'solid'])
-            this.menu.box.remove_style_class_name(`shulgo-glass-${name}`);
-        this.menu.box.add_style_class_name(`shulgo-glass-${wanted}`);
+        // Set directly on the actors, not through the stylesheet.
+        //
+        // Twice now the navy has been drawn by a rule that lost: first because it hung off the Shell
+        // theme's own .popup-menu-content, then because an extension stylesheet does not outrank a
+        // user theme's. A shell theme can restyle any class it knows, and it knows all of the Shell's;
+        // an inline style on an actor is outside that argument entirely, so this is the end of it.
+        //
+        // Three layers, from the back: the box-pointer and the menu box are emptied of whatever the
+        // theme would paint, and our own root — an actor we made, that no theme has a rule for —
+        // carries the surface.
+        const surface = {
+            tint: 'background-color: rgba(11, 18, 32, 0.78); border: 1px solid rgba(143, 179, 234, 0.2);',
+            blur: 'background-color: rgba(11, 18, 32, 0.62); border: 1px solid rgba(143, 179, 234, 0.2);',
+            solid: 'background-color: #0b1220; border: 1px solid #26324a;',
+        }[wanted] ?? '';
+
+        const blank = 'background-color: transparent; border: none; box-shadow: none;';
+        this.menu.actor.set_style(`${blank} -arrow-background-color: transparent; `
+            + '-arrow-border-color: transparent; -arrow-border-width: 0;');
+        this.menu.box.set_style(`${blank} padding: 0;`);
+        this._rootBox.set_style(`${surface} border-radius: 16px; padding: 10px 8px 6px 8px; `
+            + 'box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);');
 
         if (this._blur) {
             this.menu.box.remove_effect(this._blur);
