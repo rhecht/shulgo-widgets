@@ -142,6 +142,25 @@ export class ShulGoApi {
 
     // ---- the plumbing ------------------------------------------------------------------------
 
+    /**
+     * What we file an answer under. Not the URL: a location fix wanders by a few metres between
+     * readings, so the exact URL is never asked for twice and nothing written down would ever be found
+     * again. Rounding the point to about a hundred metres makes the key stand still while the request
+     * itself stays exact.
+     *
+     * A hundred metres is nothing against the distances this shows, and an answer served from the cache
+     * is openly an old one anyway.
+     */
+    _cacheKey(path, query) {
+        const coarse = { ...query };
+        for (const name of ['lat', 'lng']) {
+            if (coarse[name] !== undefined && coarse[name] !== null && coarse[name] !== '')
+                coarse[name] = Number(coarse[name]).toFixed(3);
+        }
+
+        return this._url(path, coarse);
+    }
+
     _url(path, query) {
         const parts = [];
         for (const [k, v] of Object.entries(query || {})) {
@@ -163,15 +182,16 @@ export class ShulGoApi {
      */
     async _get(path, query, { fresh = false } = {}) {
         const url = this._url(path, query);
+        const key = this._cacheKey(path, query);
         const now = seconds();
         const ttl = TTL[path] ?? 60;
 
         if (!fresh) {
-            const hit = this._cache.get(url);
+            const hit = this._cache.get(key);
             if (hit && now - hit.at < ttl)
                 return { ...hit.value, cachedAt: hit.at };
 
-            const waiting = this._inFlight.get(url);
+            const waiting = this._inFlight.get(key);
             if (waiting)
                 return waiting;
         }
@@ -187,30 +207,30 @@ export class ShulGoApi {
 
         // No point sitting through a fifteen-second timeout to be told what the machine already knows.
         if (this._isOnline && this._isOnline() === false) {
-            return this._fallback(url, path, {
+            return this._fallback(key, path, {
                 ok: false, code: 'offline', message: 'This computer is offline.', status: 0,
             });
         }
 
         const job = this._fetch(url).then((value) => {
-            this._inFlight.delete(url);
+            this._inFlight.delete(key);
             // Only good answers are kept; an error should be retried, not remembered.
             if (value.ok) {
-                this._cache.set(url, { at: seconds(), value });
-                this._kept?.set(url, { data: value.data, meta: value.meta });
+                this._cache.set(key, { at: seconds(), value });
+                this._kept?.set(key, { data: value.data, meta: value.meta });
 
                 return value;
             }
 
-            return this._fallback(url, path, value);
+            return this._fallback(key, path, value);
         }).catch((e) => {
-            this._inFlight.delete(url);
+            this._inFlight.delete(key);
 
-            return this._fallback(url, path, {
+            return this._fallback(key, path, {
                 ok: false, code: 'network', message: e?.message || FALLBACK, status: 0,
             });
         });
-        this._inFlight.set(url, job);
+        this._inFlight.set(key, job);
 
         return job;
     }
@@ -223,12 +243,12 @@ export class ShulGoApi {
      * An answer the server itself refused — a bad key, a key not allowed to read mikvaos — is not a
      * network problem and is never papered over with an old one.
      */
-    _fallback(url, path, failure) {
+    _fallback(key, path, failure) {
         const serverSaidNo = failure.status >= 400 && failure.status < 500;
         if (serverSaidNo)
             return failure;
 
-        const kept = this._kept?.getUsable(url, path);
+        const kept = this._kept?.getUsable(key, path);
         if (!kept)
             return failure;
 

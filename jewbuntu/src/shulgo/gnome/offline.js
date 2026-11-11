@@ -30,8 +30,12 @@ export function makeStorage() {
                 const dir = file.get_parent();
                 if (!dir.query_exists(null))
                     dir.make_directory_with_parents(null);
+                GLib.chmod(dir.get_path(), 0o700);
                 file.replace_contents(new TextEncoder().encode(text), null, false,
-                    Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+                    Gio.FileCreateFlags.REPLACE_DESTINATION | Gio.FileCreateFlags.PRIVATE, null);
+                // It holds where you were and what you looked for, so it is yours to read and nobody
+                // else's — the same footing as the key file.
+                GLib.chmod(path, 0o600);
             } catch (e) {
                 logError(e, 'ShulGo: could not write the offline cache');
             }

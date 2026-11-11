@@ -3,7 +3,7 @@
  */
 
 import { app, net } from 'electron';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** The storage adapter shulgo-core/cache.js asks for. */
@@ -21,7 +21,11 @@ export function makeStorage() {
         write(text) {
             try {
                 mkdirSync(app.getPath('userData'), { recursive: true });
-                writeFileSync(path, text, 'utf8');
+                // It holds where you were and what you looked for, so it is yours to read and nobody
+                // else's — the same footing as the key file. The mode on writeFileSync only applies
+                // when the file is created, hence the chmod as well.
+                writeFileSync(path, text, { encoding: 'utf8', mode: 0o600 });
+                chmodSync(path, 0o600);
             } catch (e) {
                 console.error('ShulGo: could not write the offline cache', e);
             }
