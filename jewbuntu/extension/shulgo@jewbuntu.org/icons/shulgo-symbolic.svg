@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ShulGo in the top bar: a shul's arched doorway with a clock hand, drawn as a GNOME symbolic icon
+     (one flat shape, currentColor, 16×16 grid) so it takes the bar's own colour in light and dark. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <g fill="currentColor">
+    <!-- The building: a rounded arch on a base, outlined so it reads at 16px. -->
+    <path d="M8 1.1 2.6 4.3v1.2h10.8V4.3L8 1.1zm0 1.45 3.1 1.85H4.9L8 2.55z"/>
+    <path d="M3.3 6.2v8.7h3.05v-4.2c0-.95.74-1.72 1.65-1.72s1.65.77 1.65 1.72v4.2H12.7V6.2H3.3zm1.2 1.2h1.4v6.3H4.5V7.4zm7 0h1.4v6.3h-1.4V7.4z"/>
+    <!-- The clock hand, for the minyan you still have time to reach. -->
+    <path d="M8 10.05c-.3 0-.55.25-.55.56v1.72c0 .17.08.33.21.44l1.02.82a.55.55 0 0 0 .69-.86l-.82-.66v-1.46c0-.31-.25-.56-.55-.56z"/>
+  </g>
+</svg>

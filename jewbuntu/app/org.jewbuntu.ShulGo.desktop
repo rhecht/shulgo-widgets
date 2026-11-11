@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=ShulGo
+GenericName=Minyan Finder
+Comment=Minyanim, events, mikvaos and zmanim near you
+Exec=shulgo
+Icon=org.jewbuntu.ShulGo
+Terminal=false
+Categories=Utility;Network;
+Keywords=minyan;minyanim;shul;shacharis;mincha;maariv;davening;zmanim;mikvah;mikvaos;jewish;shulgo;
+StartupNotify=true
+StartupWMClass=org.jewbuntu.ShulGo
+X-GNOME-UsesNotifications=false

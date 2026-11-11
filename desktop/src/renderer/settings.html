@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;">
+  <title>ShulGo Settings</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body class="glass-tint">
+  <div class="titlebar"></div>
+
+  <div class="scroll">
+    <h1>ShulGo</h1>
+
+    <section>
+      <h2>Where to look</h2>
+      <p class="hint">A city, neighborhood or zip — “Lakewood, NJ”, “Boro Park”, “11230”, “Antwerp”.
+        ShulGo looks it up and remembers it.</p>
+      <div class="search">
+        <input type="search" id="place" placeholder="Type a place" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="matches" id="matches" hidden></div>
+      <div class="current" id="current"></div>
+    </section>
+
+    <section>
+      <h2>How far ahead</h2>
+      <label class="field">
+        <span>Look ahead</span>
+        <span class="control">
+          <input type="range" id="windowMinutes" min="15" max="360" step="15">
+          <output id="windowMinutesOut"></output>
+        </span>
+      </label>
+      <label class="field">
+        <span>How you get there</span>
+        <select id="travelMode">
+          <option value="drive">Driving</option>
+          <option value="walk">Walking</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Which tefillah</span>
+        <select id="tefillah">
+          <option value="next">Whatever is next</option>
+          <option value="shacharis">Shacharis</option>
+          <option value="mincha">Mincha</option>
+          <option value="maariv">Maariv</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Which mikvaos</span>
+        <select id="mikvahFor">
+          <option value="all">All of them</option>
+          <option value="women">Women</option>
+          <option value="men">Men</option>
+          <option value="keilim">Keilim</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>Menu bar</h2>
+      <label class="field">
+        <span>What it shows</span>
+        <select id="menuBarText">
+          <option value="full">Tefillah, time and countdown</option>
+          <option value="countdown">Countdown only</option>
+          <option value="time">Time only</option>
+          <option value="icon">Just the icon</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Glass</span>
+        <select id="glass">
+          <option value="tint">See-through</option>
+          <option value="frosted">Frosted</option>
+          <option value="solid">Solid navy</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Rows in each list</span>
+        <span class="control">
+          <input type="range" id="listLength" min="3" max="40" step="1">
+          <output id="listLengthOut"></output>
+        </span>
+      </label>
+      <label class="field">
+        <span>Ask ShulGo again every</span>
+        <span class="control">
+          <input type="range" id="refreshSeconds" min="60" max="3600" step="30">
+          <output id="refreshSecondsOut"></output>
+        </span>
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" id="openAtLogin">
+        <span>Open ShulGo when I log in</span>
+      </label>
+    </section>
+
+    <section>
+      <h2>API key</h2>
+      <p class="hint">Make a key in ShulGo under <b>Admin › System › API & apps</b>. Pick
+        <b>ShulGo’s own app</b> if mikvaos should show — mikvah.org’s terms keep those listings to
+        ShulGo’s own apps. The key is kept in a file only you can read, never in this window.</p>
+      <div class="search">
+        <input type="password" id="apiKey" placeholder="sg_live_…" autocomplete="off" spellcheck="false">
+        <button class="primary" id="saveKey">Save and test</button>
+        <button id="removeKey" hidden>Remove</button>
+      </div>
+      <div class="status" id="keyStatus"></div>
+      <p class="hint" id="keyPath"></p>
+    </section>
+
+    <section>
+      <h2>Advanced</h2>
+      <p class="hint">Leave this alone unless you run your own ShulGo.</p>
+      <div class="search">
+        <input type="text" id="apiBaseUrl" spellcheck="false" autocomplete="off">
+        <button id="resetBase">Reset</button>
+      </div>
+    </section>
+
+    <footer>
+      <button id="quit">Quit ShulGo</button>
+    </footer>
+  </div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

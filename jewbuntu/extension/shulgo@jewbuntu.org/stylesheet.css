@@ -1,0 +1,457 @@
+/* ShulGo Minyan Finder — the look of the top-bar widget.
+ *
+ * The menu is ShulGo's own surface rather than the Shell theme's: navy glass, gold for what's next, the
+ * same colours as shulgo.com and the phone app (mobile/src/constants/theme.ts).
+ *
+ *   navy        #12305a      gold      #f2b705
+ *   dark bg     #0b1220      card      #141d2e      raised   #1c2740      line  #26324a
+ *   text        #f2f4f7      secondary #a9b3c2      accent   #8fb3ea
+ *   good        #5fd39a      warning   #f3b65b      bad      #ff8a80      mikvah #5cc9d2
+ *
+ * Because the surface is ours and always dark, the colours can be written down plainly instead of being
+ * guessed at for a light or dark Shell theme. GNOME Shell's CSS is a subset: no variables, no flexbox,
+ * and gradients are written as background-gradient-*.
+ */
+
+/* ---- the top bar ------------------------------------------------------------------------- */
+
+.shulgo-panel-box {
+  spacing: 6px;
+}
+
+.shulgo-panel-icon-alert {
+  color: #f3b65b;
+}
+
+.shulgo-panel-label {
+  font-weight: 500;
+}
+
+.shulgo-panel-pill {
+  font-size: 0.82em;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background-color: rgba(143, 179, 234, 0.22);
+}
+
+.shulgo-pill-comfortable {
+  background-color: rgba(95, 211, 154, 0.22);
+  color: #5fd39a;
+}
+
+.shulgo-pill-tight {
+  background-color: rgba(243, 182, 91, 0.22);
+  color: #f3b65b;
+}
+
+.shulgo-pill-missed {
+  background-color: rgba(255, 138, 128, 0.2);
+  color: #ff8a80;
+}
+
+.shulgo-pill-unknown {
+  background-color: rgba(143, 179, 234, 0.18);
+}
+
+/* ---- the glass the menu is made of ------------------------------------------------------- */
+
+/* A Shell menu is drawn by its box-pointer, which some themes fill behind the content. Clearing that
+ * first is what lets anything show through at all. */
+.shulgo-glass-tint,
+.shulgo-glass-blur,
+.shulgo-glass-solid {
+  -arrow-background-color: transparent;
+  -arrow-border-color: transparent;
+  -arrow-border-width: 0;
+  background-color: transparent;
+}
+
+/* See-through navy, so the wallpaper and windows show through. */
+.shulgo-glass-tint .popup-menu-content,
+.shulgo-glass-blur .popup-menu-content {
+  background-color: rgba(11, 18, 32, 0.78);
+  border: 1px solid rgba(143, 179, 234, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+  padding: 6px;
+}
+
+/* With a blur behind it, the glass can be thinner still. */
+.shulgo-glass-blur .popup-menu-content {
+  background-color: rgba(11, 18, 32, 0.62);
+}
+
+/* For anyone who'd rather read than see through. */
+.shulgo-glass-solid .popup-menu-content {
+  background-color: #0b1220;
+  border: 1px solid #26324a;
+  border-radius: 16px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+  padding: 6px;
+}
+
+.shulgo-menu-item {
+  padding: 0;
+}
+
+.shulgo-root {
+  width: 25em;
+  spacing: 8px;
+  padding: 4px 2px 2px 2px;
+  color: #f2f4f7;
+}
+
+/* ---- header ----------------------------------------------------------------------------- */
+
+.shulgo-header {
+  spacing: 4px;
+  padding: 2px 4px 0 6px;
+}
+
+.shulgo-place {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: #f2f4f7;
+}
+
+.shulgo-hebrew-date {
+  font-size: 0.85em;
+  padding-top: 1px;
+  color: #a9b3c2;
+}
+
+.shulgo-spinner {
+  font-size: 1.2em;
+  padding-right: 2px;
+  color: #8fb3ea;
+}
+
+.shulgo-icon-button {
+  border-radius: 99px;
+  padding: 6px;
+  color: #cfd8e6;
+}
+
+.shulgo-icon-button:hover,
+.shulgo-icon-button:focus {
+  background-color: rgba(143, 179, 234, 0.18);
+  color: #ffffff;
+}
+
+.shulgo-icon-button:active {
+  background-color: rgba(143, 179, 234, 0.3);
+}
+
+.shulgo-icon-button-icon {
+  icon-size: 16px;
+}
+
+/* ---- tabs ------------------------------------------------------------------------------- */
+
+.shulgo-tabs {
+  spacing: 2px;
+  padding: 2px;
+  margin: 0 4px;
+  border-radius: 11px;
+  background-color: rgba(18, 48, 90, 0.55);
+  border: 1px solid rgba(143, 179, 234, 0.14);
+}
+
+.shulgo-tab {
+  padding: 5px 8px;
+  border-radius: 9px;
+  font-size: 0.92em;
+  font-weight: 500;
+  color: #c3cddc;
+}
+
+.shulgo-tab:hover,
+.shulgo-tab:focus {
+  background-color: rgba(143, 179, 234, 0.16);
+  color: #ffffff;
+}
+
+.shulgo-tab-active {
+  background-gradient-direction: vertical;
+  background-gradient-start: #ffd54f;
+  background-gradient-end: #f2b705;
+  color: #231900;
+  font-weight: 700;
+}
+
+.shulgo-tab-active:hover,
+.shulgo-tab-active:focus {
+  background-gradient-start: #ffdf77;
+  background-gradient-end: #ffc41f;
+  color: #231900;
+}
+
+/* ---- the list --------------------------------------------------------------------------- */
+
+.shulgo-scroll {
+  max-height: 23em;
+  margin: 0 2px;
+}
+
+.shulgo-content {
+  spacing: 4px;
+  padding: 2px 4px 4px 4px;
+}
+
+.shulgo-chips {
+  spacing: 4px;
+  padding: 0 0 2px 0;
+}
+
+.shulgo-chip {
+  padding: 3px 11px;
+  border-radius: 99px;
+  font-size: 0.86em;
+  color: #c3cddc;
+  border: 1px solid rgba(143, 179, 234, 0.28);
+}
+
+.shulgo-chip:hover,
+.shulgo-chip:focus {
+  background-color: rgba(143, 179, 234, 0.16);
+  color: #ffffff;
+}
+
+.shulgo-chip-active {
+  background-color: #1d4b85;
+  border: 1px solid #8fb3ea;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.shulgo-row-button {
+  border-radius: 13px;
+  padding: 0;
+  color: #f2f4f7;
+}
+
+.shulgo-row-button:hover,
+.shulgo-row-button:focus {
+  background-color: rgba(143, 179, 234, 0.12);
+}
+
+.shulgo-row {
+  spacing: 10px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background-color: rgba(28, 39, 64, 0.72);
+  border: 1px solid rgba(143, 179, 234, 0.1);
+}
+
+/* The one the top bar is counting down to. */
+.shulgo-row-first {
+  background-gradient-direction: horizontal;
+  background-gradient-start: rgba(242, 183, 5, 0.26);
+  background-gradient-end: rgba(28, 39, 64, 0.72);
+  border: 1px solid rgba(242, 183, 5, 0.5);
+}
+
+.shulgo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background-color: rgba(169, 179, 194, 0.55);
+}
+
+.shulgo-dot-comfortable { background-color: #5fd39a; }
+.shulgo-dot-tight       { background-color: #f3b65b; }
+.shulgo-dot-missed      { background-color: #ff8a80; }
+.shulgo-dot-unknown     { background-color: rgba(169, 179, 194, 0.55); }
+.shulgo-dot-mikvah      { background-color: #5cc9d2; }
+
+.shulgo-time-box {
+  spacing: 1px;
+  min-width: 5.4em;
+}
+
+.shulgo-time {
+  font-size: 1.12em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.shulgo-event-date {
+  font-size: 1em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.shulgo-countdown {
+  font-size: 0.8em;
+  color: #a9b3c2;
+}
+
+.shulgo-countdown-comfortable { color: #5fd39a; }
+.shulgo-countdown-tight       { color: #f3b65b; }
+.shulgo-countdown-missed      { color: #ff8a80; }
+
+.shulgo-row-title {
+  font-weight: 600;
+  color: #f2f4f7;
+}
+
+.shulgo-row-subtitle {
+  font-size: 0.85em;
+  color: #a9b3c2;
+}
+
+.shulgo-row-note {
+  font-size: 0.82em;
+  font-style: italic;
+  color: #8f9bad;
+}
+
+.shulgo-badge {
+  font-size: 0.72em;
+  font-weight: 700;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 99px;
+  background-color: rgba(143, 179, 234, 0.2);
+  color: #cfd8e6;
+}
+
+.shulgo-badge-live {
+  background-color: rgba(95, 211, 154, 0.22);
+  color: #5fd39a;
+}
+
+.shulgo-badge-missed {
+  background-color: rgba(255, 138, 128, 0.18);
+  color: #ff8a80;
+}
+
+.shulgo-badge-mikvah {
+  background-color: rgba(92, 201, 210, 0.2);
+  color: #5cc9d2;
+}
+
+.shulgo-row-action {
+  padding: 5px;
+}
+
+.shulgo-more {
+  padding: 7px;
+  border-radius: 11px;
+  font-size: 0.88em;
+  font-weight: 600;
+  color: #8fb3ea;
+}
+
+.shulgo-more:hover,
+.shulgo-more:focus {
+  background-color: rgba(143, 179, 234, 0.14);
+  color: #ffffff;
+}
+
+/* ---- zmanim ----------------------------------------------------------------------------- */
+
+.shulgo-zman {
+  spacing: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: #dbe2ec;
+}
+
+.shulgo-zman-next {
+  background-gradient-direction: horizontal;
+  background-gradient-start: rgba(242, 183, 5, 0.26);
+  background-gradient-end: rgba(242, 183, 5, 0.04);
+  border: 1px solid rgba(242, 183, 5, 0.45);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.shulgo-zman-label {
+  font-size: 0.95em;
+}
+
+.shulgo-zman-time {
+  font-weight: 600;
+}
+
+/* ---- notices, empty states, footer ------------------------------------------------------ */
+
+.shulgo-notice,
+.shulgo-empty {
+  spacing: 6px;
+  padding: 16px 14px;
+  border-radius: 13px;
+  background-color: rgba(28, 39, 64, 0.7);
+  border: 1px solid rgba(143, 179, 234, 0.12);
+}
+
+.shulgo-notice-error {
+  background-color: rgba(179, 38, 30, 0.22);
+  border: 1px solid rgba(255, 138, 128, 0.4);
+}
+
+.shulgo-notice-title,
+.shulgo-empty-title {
+  font-size: 1.02em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.shulgo-notice-body,
+.shulgo-empty-body {
+  font-size: 0.88em;
+  color: #a9b3c2;
+}
+
+.shulgo-primary-button {
+  margin-top: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  background-gradient-direction: vertical;
+  background-gradient-start: #ffd54f;
+  background-gradient-end: #f2b705;
+  color: #231900;
+}
+
+.shulgo-primary-button:hover,
+.shulgo-primary-button:focus {
+  background-gradient-start: #ffdf77;
+  background-gradient-end: #ffc41f;
+}
+
+.shulgo-footer {
+  spacing: 6px;
+  padding: 2px 8px 4px 8px;
+}
+
+.shulgo-updated {
+  font-size: 0.8em;
+  color: #8f9bad;
+}
+
+.shulgo-link-button,
+.shulgo-credit-button {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #8fb3ea;
+}
+
+.shulgo-link-button:hover,
+.shulgo-link-button:focus,
+.shulgo-credit-button:hover,
+.shulgo-credit-button:focus {
+  background-color: rgba(143, 179, 234, 0.14);
+  color: #ffffff;
+}
+
+.shulgo-credit,
+.shulgo-credit-button {
+  font-size: 0.78em;
+  padding-top: 4px;
+  color: #8f9bad;
+}

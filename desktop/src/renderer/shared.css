@@ -1,0 +1,184 @@
+/* ShulGo's colours and the pieces both windows use.
+ *
+ * The palette is the website's and the phone app's — the same numbers as shulgo-core/palette.js and the
+ * JewBuntu widget's stylesheet, so all four look like one product.
+ *
+ * The window itself is see-through: macOS blurs what's behind it (NSVisualEffectView, set in main.js),
+ * and these rules lay ShulGo's navy over that blur rather than painting an opaque background.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --navy: #12305a;
+  --navy-2: #1d4b85;
+  --gold: #f2b705;
+  --gold-light: #ffd54f;
+
+  --bg: #0b1220;
+  --card: #141d2e;
+  --raised: #1c2740;
+  --line: #26324a;
+  --text: #f2f4f7;
+  --muted: #a9b3c2;
+  --faint: #8f9bad;
+  --accent: #8fb3ea;
+
+  --good: #5fd39a;
+  --warn: #f3b65b;
+  --bad: #ff8a80;
+  --mikvah: #5cc9d2;
+
+  /* How much navy sits over the system's blur. The "glass" setting swaps these. */
+  --veil: rgba(11, 18, 32, 0.62);
+  --veil-raised: rgba(28, 39, 64, 0.72);
+  --veil-line: rgba(143, 179, 234, 0.12);
+
+  --radius: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* See-through: less navy, more desktop. */
+body.glass-tint {
+  --veil: rgba(11, 18, 32, 0.52);
+}
+
+/* Frosted: more navy over the blur, so it reads as glass rather than a window. */
+body.glass-frosted {
+  --veil: rgba(11, 18, 32, 0.72);
+}
+
+/* Solid: no desktop at all. */
+body.glass-solid {
+  --veil: #0b1220;
+  --veil-raised: #1c2740;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  color: var(--text);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* ---- shared pieces ----------------------------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(143, 179, 234, 0.2);
+  color: #cfd8e6;
+  vertical-align: 1.5px;
+}
+
+.badge.live {
+  background: rgba(95, 211, 154, 0.22);
+  color: var(--good);
+}
+
+.badge.missed {
+  background: rgba(255, 138, 128, 0.18);
+  color: var(--bad);
+}
+
+.badge.mikvah {
+  background: rgba(92, 201, 210, 0.2);
+  color: var(--mikvah);
+}
+
+.dot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(169, 179, 194, 0.55);
+}
+
+.dot.comfortable { background: var(--good); }
+.dot.tight       { background: var(--warn); }
+.dot.missed      { background: var(--bad); }
+.dot.mikvah      { background: var(--mikvah); }
+
+.urgency-comfortable { color: var(--good); }
+.urgency-tight       { color: var(--warn); }
+.urgency-missed      { color: var(--bad); }
+.urgency-unknown     { color: var(--muted); }
+
+.primary {
+  padding: 7px 15px;
+  border-radius: 9px;
+  font-weight: 700;
+  color: #231900;
+  background: linear-gradient(var(--gold-light), var(--gold));
+}
+
+.primary:hover {
+  background: linear-gradient(#ffdf77, #ffc41f);
+}
+
+.notice {
+  margin: 10px 4px;
+  padding: 20px 18px;
+  border-radius: var(--radius);
+  text-align: center;
+  background: var(--veil-raised);
+  border: 1px solid var(--veil-line);
+}
+
+.notice h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.notice p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.notice.error {
+  background: rgba(179, 38, 30, 0.22);
+  border-color: rgba(255, 138, 128, 0.4);
+}
+
+/* A scrollbar that doesn't fight the glass. */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: rgba(143, 179, 234, 0.22);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(143, 179, 234, 0.38);
+}

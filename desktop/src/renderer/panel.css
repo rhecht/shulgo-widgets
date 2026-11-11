@@ -1,0 +1,362 @@
+/* The menu-bar panel. */
+
+body {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--veil);
+}
+
+/* ---- header ------------------------------------------------------------------------------ */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 12px 8px 14px;
+  -webkit-app-region: drag;
+}
+
+header .where {
+  flex: 1;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+}
+
+header .place {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+header .hebrew {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-button {
+  -webkit-app-region: no-drag;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  color: #cfd8e6;
+  background: rgba(143, 179, 234, 0.12);
+}
+
+.icon-button:hover {
+  background: rgba(143, 179, 234, 0.24);
+  color: #fff;
+}
+
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.icon-button.spinning svg {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- tabs -------------------------------------------------------------------------------- */
+
+nav {
+  display: flex;
+  gap: 2px;
+  margin: 0 12px;
+  padding: 2px;
+  border-radius: 11px;
+  background: rgba(18, 48, 90, 0.5);
+  border: 1px solid rgba(143, 179, 234, 0.14);
+}
+
+nav button {
+  flex: 1;
+  padding: 5px 4px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #c3cddc;
+}
+
+nav button:hover {
+  background: rgba(143, 179, 234, 0.14);
+  color: #fff;
+}
+
+nav button[aria-selected="true"] {
+  background: linear-gradient(var(--gold-light), var(--gold));
+  color: #231900;
+  font-weight: 700;
+}
+
+/* ---- the list ---------------------------------------------------------------------------- */
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px 4px;
+}
+
+.chips {
+  display: flex;
+  gap: 5px;
+  padding: 2px 2px 8px;
+}
+
+.chips button {
+  padding: 3px 11px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  color: #c3cddc;
+  border: 1px solid rgba(143, 179, 234, 0.26);
+}
+
+.chips button:hover {
+  background: rgba(143, 179, 234, 0.14);
+  color: #fff;
+}
+
+.chips button[aria-pressed="true"] {
+  background: var(--navy-2);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.section {
+  padding: 6px 4px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.section:first-child {
+  padding-top: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  text-align: left;
+  background: var(--veil-raised);
+  border: 1px solid var(--veil-line);
+  transition: background 90ms ease-out;
+}
+
+.row:hover {
+  background: rgba(36, 51, 83, 0.86);
+  border-color: rgba(143, 179, 234, 0.24);
+}
+
+/* The one the menu bar is counting down to. A gold edge and a gold time read as gold; a gold wash over
+ * navy only goes olive. */
+.row.headline {
+  background: linear-gradient(to right, rgba(242, 183, 5, 0.16), var(--veil-raised) 60%);
+  border-color: rgba(242, 183, 5, 0.5);
+  box-shadow: inset 3px 0 0 var(--gold);
+  padding-left: 13px;
+}
+
+.row.headline:hover {
+  background: linear-gradient(to right, rgba(242, 183, 5, 0.24), rgba(36, 51, 83, 0.88) 60%);
+}
+
+.row.headline .time {
+  color: var(--gold-light);
+}
+
+.row .when {
+  flex: 0 0 76px;
+}
+
+.row .time {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.row .countdown {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* The urgency colour has to out-rank the row's own muted grey. */
+.row .countdown.urgency-comfortable { color: var(--good); }
+.row .countdown.urgency-tight       { color: var(--warn); }
+.row .countdown.urgency-missed      { color: var(--bad); }
+
+.row .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.row .title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.row .sub {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.row .note {
+  margin-top: 2px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--faint);
+  line-height: 1.35;
+}
+
+.row .go {
+  flex: 0 0 24px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 99px;
+  color: var(--accent);
+  background: rgba(143, 179, 234, 0.1);
+}
+
+.row .go:hover {
+  background: rgba(143, 179, 234, 0.3);
+  color: #fff;
+}
+
+.row .go svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+.more {
+  width: 100%;
+  margin: 3px 0 6px;
+  padding: 8px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(143, 179, 234, 0.08);
+}
+
+.more:hover {
+  background: rgba(143, 179, 234, 0.18);
+  color: #fff;
+}
+
+/* ---- zmanim ------------------------------------------------------------------------------ */
+
+.zman {
+  display: flex;
+  /* The "about" line sits on its own row underneath, which needs the wrap; without it, it fights the
+     label and the time for the same line and squeezes both. */
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  color: #dbe2ec;
+}
+
+.zman.past {
+  opacity: 0.5;
+}
+
+.zman.next {
+  background: linear-gradient(to right, rgba(242, 183, 5, 0.26), rgba(242, 183, 5, 0.03));
+  border: 1px solid rgba(242, 183, 5, 0.42);
+  color: #fff;
+  font-weight: 700;
+}
+
+.zman .label {
+  flex: 1 1 60%;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.zman .at {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.zman .about {
+  flex: 0 0 100%;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: #c6ceda;
+  line-height: 1.4;
+}
+
+/* ---- footer ------------------------------------------------------------------------------ */
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 9px;
+  border-top: 1px solid rgba(143, 179, 234, 0.1);
+}
+
+footer .updated {
+  flex: 1;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+footer button {
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+footer button:hover {
+  background: rgba(143, 179, 234, 0.16);
+  color: #fff;
+}
+
+.credit {
+  padding: 6px 0 10px;
+  font-size: 10.5px;
+  color: var(--faint);
+  text-align: center;
+}
+
+.credit button {
+  font-size: inherit;
+  color: var(--faint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.credit button:hover {
+  color: var(--accent);
+}

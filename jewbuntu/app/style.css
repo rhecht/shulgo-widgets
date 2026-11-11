@@ -1,0 +1,146 @@
+/* ShulGo for JewBuntu — the window's own shapes, on top of libadwaita.
+ *
+ * The palette is the website's and the phone app's (mobile/src/constants/theme.ts), so the three look
+ * like one product:
+ *
+ *   navy #12305a · navy2 #1d4b85 · gold #f2b705
+ *   dark   bg #0b1220  card #141d2e  raised #1c2740  line #26324a  text #f2f4f7  muted #a9b3c2  accent #8fb3ea
+ *   light  bg #f5f6f8  card #ffffff  raised #eef1f5  line #dfe3e8  text #1b2430  muted #5d6877  accent #12305a
+ *
+ * The colours themselves aren't here: GTK has no prefers-color-scheme, so main.js writes libadwaita's
+ * named colours out of shulgo/core/palette.js each time the system switches between light and dark.
+ * This file only uses those names. The .shulgo-glass classes, set from the "Glass" setting, decide how
+ * much of the desktop shows through.
+ */
+
+/* ---- glass ------------------------------------------------------------------------------ */
+
+/* See-through: the desktop shows through the window. GNOME doesn't blur app windows, so "frosted"
+ * is the same translucency with a little more of ShulGo's navy mixed in. */
+.shulgo-glass-tint,
+.shulgo-glass-tint headerbar,
+.shulgo-glass-tint .sidebar-pane,
+.shulgo-glass-tint .content-pane {
+  background-color: alpha(@window_bg_color, 0.86);
+}
+
+.shulgo-glass-blur,
+.shulgo-glass-blur headerbar,
+.shulgo-glass-blur .sidebar-pane,
+.shulgo-glass-blur .content-pane {
+  background-color: alpha(mix(@window_bg_color, @accent_bg_color, 0.2), 0.78);
+}
+
+.shulgo-glass-tint .card,
+.shulgo-glass-blur .card,
+.shulgo-glass-tint .boxed-list,
+.shulgo-glass-blur .boxed-list {
+  background-color: alpha(@card_bg_color, 0.72);
+}
+
+/* ---- the hero card ---------------------------------------------------------------------- */
+
+.shulgo-hero {
+  padding: 18px 20px;
+  margin: 12px 0 0 0;
+  border-radius: 18px;
+  background-image: linear-gradient(to right, alpha(@shulgo_gold, 0.14), alpha(@shulgo_gold, 0.02));
+  border: 1px solid alpha(@shulgo_gold, 0.38);
+}
+
+.shulgo-hero-comfortable { border-left: 4px solid @success_color; }
+.shulgo-hero-tight       { border-left: 4px solid @warning_color; }
+.shulgo-hero-missed      { border-left: 4px solid @error_color; }
+.shulgo-hero-unknown     { border-left: 4px solid alpha(currentColor, 0.25); }
+
+.shulgo-hero-time {
+  font-size: 2.3em;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  margin-bottom: -2px;
+}
+
+.shulgo-hero-countdown {
+  font-size: 0.95em;
+  font-weight: 700;
+}
+
+.shulgo-hero-title {
+  font-size: 1.25em;
+  font-weight: 700;
+}
+
+.shulgo-hero-shul {
+  font-size: 1em;
+  opacity: 0.85;
+}
+
+/* ---- rows ------------------------------------------------------------------------------- */
+
+.shulgo-dot {
+  -gtk-icon-size: 10px;
+}
+
+.shulgo-row-countdown {
+  font-size: 0.9em;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  margin-right: 4px;
+}
+
+.shulgo-urgency-comfortable { color: @success_color; }
+.shulgo-urgency-tight       { color: @warning_color; }
+.shulgo-urgency-missed      { color: @error_color; }
+.shulgo-urgency-unknown     { opacity: 0.5; }
+
+.shulgo-event-date {
+  font-weight: 700;
+  color: @accent_color;
+  margin-right: 6px;
+}
+
+.shulgo-mikvah-icon {
+  color: @shulgo_mikvah;
+}
+
+/* ---- chips ------------------------------------------------------------------------------ */
+
+.shulgo-chip {
+  border-radius: 99px;
+  padding: 4px 16px;
+  min-height: 0;
+  font-size: 0.92em;
+}
+
+.shulgo-chip-active {
+  font-weight: 700;
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+/* ---- zmanim ----------------------------------------------------------------------------- */
+
+.shulgo-zman-next {
+  background-image: linear-gradient(to right, alpha(@shulgo_gold, 0.2), alpha(@shulgo_gold, 0.02));
+  font-weight: 700;
+}
+
+.shulgo-zman-time {
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  margin-right: 4px;
+}
+
+.shulgo-candles {
+  font-size: 0.9em;
+  opacity: 0.7;
+  margin: 4px 0 16px 0;
+}
+
+/* ---- footers ---------------------------------------------------------------------------- */
+
+.shulgo-credit {
+  font-size: 0.85em;
+  opacity: 0.6;
+  margin-bottom: 14px;
+}

@@ -1,0 +1,370 @@
+/* The panel's view.
+ *
+ * It holds no logic of its own worth the name: every string and every class it draws was worked out by
+ * shulgo-core in the main process and arrives as one state object. That is what keeps this panel and the
+ * JewBuntu widget saying the same thing.
+ */
+
+const TABS = [
+    { id: 'minyanim', label: 'Minyanim' },
+    { id: 'events', label: 'Events' },
+    { id: 'mikvaos', label: 'Mikvaos' },
+    { id: 'zmanim', label: 'Zmanim' },
+];
+
+const TEFILLOS = [
+    { id: 'next', label: 'Next' },
+    { id: 'shacharis', label: 'Shacharis' },
+    { id: 'mincha', label: 'Mincha' },
+    { id: 'maariv', label: 'Maariv' },
+];
+
+const PIN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6a4.4 4.4 0 0 0-4.4 4.4c0 3.1 3.84 7.7 4 7.9a.5.5 0 0 0 .78 0c.17-.2 4.02-4.8 4.02-7.9A4.4 4.4 0 0 0 8 1.6zm0 6.1a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4z"/></svg>';
+
+const el = {
+    place: document.getElementById('place'),
+    hebrew: document.getElementById('hebrew'),
+    refresh: document.getElementById('refresh'),
+    settings: document.getElementById('settings'),
+    tabs: document.getElementById('tabs'),
+    content: document.getElementById('content'),
+    updated: document.getElementById('updated'),
+    openSite: document.getElementById('open-site'),
+};
+
+let state = null;
+let tab = 'minyanim';
+
+function node(tag, className, text) {
+    const n = document.createElement(tag);
+    if (className)
+        n.className = className;
+    if (text !== undefined)
+        n.textContent = text;
+
+    return n;
+}
+
+function open(url) {
+    if (!url)
+        return;
+    window.shulgo.openExternal(url);
+    window.shulgo.hidePanel();
+}
+
+// ---- the tab strip -------------------------------------------------------------------------
+
+function buildTabs() {
+    for (const t of TABS) {
+        const button = node('button', null, t.label);
+        button.setAttribute('role', 'tab');
+        button.dataset.tab = t.id;
+        button.addEventListener('click', () => {
+            tab = t.id;
+            window.shulgo.set({ lastTab: t.id });
+            render();
+        });
+        el.tabs.append(button);
+    }
+}
+
+// ---- rows ----------------------------------------------------------------------------------
+
+/** One list row: a button for the whole row, with a second little button for directions. */
+function rowButton({ link, headline, children, directions }) {
+    const row = node('button', `row${headline ? ' headline' : ''}`);
+    for (const child of children)
+        row.append(child);
+
+    if (directions) {
+        const go = node('span', 'go');
+        go.innerHTML = PIN;
+        go.title = 'Directions';
+        go.addEventListener('click', (event) => {
+            event.stopPropagation();
+            open(directions);
+        });
+        row.append(go);
+    }
+
+    if (link)
+        row.addEventListener('click', () => open(link));
+    else
+        row.style.cursor = 'default';
+
+    return row;
+}
+
+function minyanRow(m) {
+    const when = node('div', 'when');
+    when.append(node('div', 'time', m.displayTime ?? ''));
+    when.append(node('div', `countdown urgency-${m.urgency}`, m.countdown));
+
+    const body = node('div', 'body');
+    const title = node('div', 'title', m.tefillah);
+    if (m.kind === 'live')
+        title.insertAdjacentHTML('beforeend', '<span class="badge live">Live</span>');
+    else if (m.kind === 'standing')
+        title.insertAdjacentHTML('beforeend', '<span class="badge">Standing</span>');
+    if (m.urgency === 'missed')
+        title.insertAdjacentHTML('beforeend', '<span class="badge missed">Too far</span>');
+    body.append(title);
+    body.append(node('div', 'sub', m.subtitle));
+    if (m.note)
+        body.append(node('div', 'note', m.note));
+
+    return rowButton({
+        link: m.link,
+        headline: m.isHeadline,
+        directions: m.directions,
+        children: [node('span', `dot ${m.urgency}`), when, body],
+    });
+}
+
+function eventRow(e) {
+    const when = node('div', 'when');
+    when.append(node('div', 'time', e.dateLabel));
+    if (e.start_time)
+        when.append(node('div', 'countdown', e.start_time));
+
+    const body = node('div', 'body');
+    body.append(node('div', 'title', e.title ?? ''));
+    if (e.whereLine)
+        body.append(node('div', 'sub', e.whereLine));
+
+    return rowButton({ link: e.link, directions: e.directions, children: [when, body] });
+}
+
+function mikvahRow(m) {
+    const body = node('div', 'body');
+    const title = node('div', 'title', m.name ?? '');
+    for (const whom of m.whom)
+        title.insertAdjacentHTML('beforeend', `<span class="badge mikvah">${whom}</span>`);
+    body.append(title);
+    body.append(node('div', 'sub', m.whereLine));
+
+    return rowButton({
+        link: m.url,
+        directions: m.directions,
+        children: [node('span', 'dot mikvah'), body],
+    });
+}
+
+// ---- whole-panel states ----------------------------------------------------------------------
+
+function notice({ title, body, actionLabel, onAction, error = false }) {
+    const box = node('div', `notice${error ? ' error' : ''}`);
+    box.append(node('h2', null, title));
+    if (body)
+        box.append(node('p', null, body));
+    if (actionLabel) {
+        const button = node('button', 'primary', actionLabel);
+        button.addEventListener('click', onAction);
+        box.append(button);
+    }
+
+    return box;
+}
+
+// ---- drawing ---------------------------------------------------------------------------------
+
+function render() {
+    if (!state)
+        return;
+
+    document.body.className = `glass-${state.settings.glass === 'blur' ? 'frosted' : state.settings.glass}`;
+
+    el.place.textContent = state.place?.label ?? 'ShulGo';
+    el.hebrew.textContent = state.hebrewLine ?? '';
+    el.updated.textContent = state.updatedLabel ?? '';
+    el.refresh.classList.toggle('spinning', Boolean(state.loading));
+
+    if (!state.mikvaosAllowed && tab === 'mikvaos')
+        tab = 'minyanim';
+
+    for (const button of el.tabs.children) {
+        const id = button.dataset.tab;
+        button.setAttribute('aria-selected', String(id === tab));
+        button.hidden = id === 'mikvaos' && !state.mikvaosAllowed;
+    }
+
+    el.content.replaceChildren();
+
+    if (state.needsKey) {
+        el.content.append(notice({
+            title: 'Add your ShulGo API key',
+            body: 'Make a key in ShulGo under Admin › System › API & apps, then paste it into Settings.',
+            actionLabel: 'Open Settings',
+            onAction: () => window.shulgo.openSettings(),
+        }));
+
+        return;
+    }
+
+    if (state.needsPlace) {
+        el.content.append(notice({
+            title: 'Where are you?',
+            body: 'Tell ShulGo a city, neighborhood or zip and it will remember it.',
+            actionLabel: 'Open Settings',
+            onAction: () => window.shulgo.openSettings(),
+        }));
+
+        return;
+    }
+
+    if (tab === 'minyanim')
+        renderMinyanim();
+    else if (tab === 'events')
+        renderEvents();
+    else if (tab === 'mikvaos')
+        renderMikvaos();
+    else
+        renderZmanim();
+}
+
+function renderMinyanim() {
+    const chips = node('div', 'chips');
+    for (const t of TEFILLOS) {
+        const button = node('button', null, t.label);
+        button.setAttribute('aria-pressed', String(state.settings.tefillah === t.id));
+        button.addEventListener('click', () => window.shulgo.set({ tefillah: t.id }));
+        chips.append(button);
+    }
+    el.content.append(chips);
+
+    if (state.error) {
+        el.content.append(notice({
+            title: 'ShulGo couldn’t answer',
+            body: state.error.message,
+            actionLabel: 'Try again',
+            onAction: () => window.shulgo.refresh(),
+            error: true,
+        }));
+
+        return;
+    }
+
+    if (!state.minyanim.length) {
+        el.content.append(notice({
+            title: `Nothing in the next ${state.settings.windowMinutes} minutes`,
+            body: 'Try looking further ahead, or a different tefillah.',
+        }));
+
+        return;
+    }
+
+    // The one the menu bar counts down to leads, then the rest in time order.
+    const headline = state.minyanim.find((m) => m.isHeadline);
+    const rest = state.minyanim.filter((m) => !m.isHeadline);
+    const rows = headline
+        ? [headline, ...rest.slice(0, state.settings.listLength - 1)]
+        : rest.slice(0, state.settings.listLength);
+
+    if (headline) {
+        el.content.append(sectionLabel(headline.urgency === 'missed'
+            ? 'Soonest — but you’d not make it'
+            : 'Soonest you can make'));
+        el.content.append(minyanRow(headline));
+        if (rows.length > 1)
+            el.content.append(sectionLabel('Also coming up'));
+    }
+    for (const m of rows.filter((m) => m !== headline))
+        el.content.append(minyanRow(m));
+
+    if (state.total > rows.length)
+        el.content.append(moreButton(`${state.total - rows.length} more on ShulGo`, `${state.siteUrl}/next`));
+}
+
+function renderEvents() {
+    if (!state.events.length) {
+        el.content.append(notice({
+            title: 'No events coming up near here',
+            body: 'Events that shuls send in to ShulGo show up here, soonest first.',
+        }));
+
+        return;
+    }
+    for (const e of state.events.slice(0, state.settings.listLength))
+        el.content.append(eventRow(e));
+    el.content.append(moreButton('All events on ShulGo', `${state.siteUrl}/events`));
+}
+
+function renderMikvaos() {
+    if (!state.mikvaos.length) {
+        el.content.append(notice({ title: 'No mikvaos listed near here' }));
+
+        return;
+    }
+    for (const m of state.mikvaos.slice(0, state.settings.listLength))
+        el.content.append(mikvahRow(m));
+
+    // mikvah.org's terms: their name goes on the list.
+    if (state.credit?.text) {
+        const credit = node('div', 'credit');
+        if (state.credit.url) {
+            const button = node('button', null, state.credit.text);
+            button.addEventListener('click', () => open(state.credit.url));
+            credit.append(button);
+        } else {
+            credit.textContent = state.credit.text;
+        }
+        el.content.append(credit);
+    }
+}
+
+function renderZmanim() {
+    if (!state.zmanim.length) {
+        el.content.append(notice({ title: 'No zmanim yet' }));
+
+        return;
+    }
+
+    for (const z of state.zmanim) {
+        const row = node('div', `zman${z.isNext ? ' next' : ''}${z.past && !z.isNext ? ' past' : ''}`);
+        row.append(node('span', 'label', z.label));
+        row.append(node('span', 'at', z.display));
+        if (z.isNext && z.about)
+            row.append(node('span', 'about', z.about));
+        el.content.append(row);
+    }
+
+    if (state.candles)
+        el.content.append(node('div', 'credit', `Candle lighting ${state.candles}`));
+}
+
+/** A quiet little heading between groups of rows. */
+function sectionLabel(text) {
+    return node('div', 'section', text);
+}
+
+function moreButton(label, url) {
+    const button = node('button', 'more', label);
+    button.addEventListener('click', () => open(url));
+
+    return button;
+}
+
+// ---- wiring ----------------------------------------------------------------------------------
+
+buildTabs();
+el.refresh.addEventListener('click', () => window.shulgo.refresh());
+el.settings.addEventListener('click', () => window.shulgo.openSettings());
+el.openSite.addEventListener('click', () => open(`${state?.siteUrl ?? 'https://shulgo.com'}/next`));
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape')
+        window.shulgo.hidePanel();
+    if (event.key === 'r' && (event.metaKey || event.ctrlKey))
+        window.shulgo.refresh();
+});
+
+window.shulgo.onState((next) => {
+    state = next;
+    tab = TABS.some((t) => t.id === tab) ? tab : 'minyanim';
+    render();
+});
+
+window.shulgo.getState().then((first) => {
+    state = first;
+    tab = first.settings.lastTab || 'minyanim';
+    render();
+});

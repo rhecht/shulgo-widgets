@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ShulGo's app icon: the arched doorway of a shul over ShulGo's navy, with the gold clock hand that
+     stands for the minyan you can still reach. Drawn on GNOME's 128×128 app-icon grid. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d4b85"/>
+      <stop offset="1" stop-color="#0d2446"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd54f"/>
+      <stop offset="1" stop-color="#f2b705"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#sky)"/>
+
+  <!-- The roofline. -->
+  <path d="M64 24 26 46v8h76v-8L64 24z" fill="#f6f7fb" opacity="0.95"/>
+
+  <!-- The walls and the arched doorway. -->
+  <path d="M32 58v46h18V78a14 14 0 0 1 28 0v26h18V58H32z" fill="#f6f7fb" opacity="0.95"/>
+
+  <!-- Two windows. -->
+  <rect x="38" y="64" width="9" height="18" rx="4.5" fill="#1d4b85"/>
+  <rect x="81" y="64" width="9" height="18" rx="4.5" fill="#1d4b85"/>
+
+  <!-- The clock hand in the doorway. -->
+  <circle cx="64" cy="86" r="15" fill="url(#gold)"/>
+  <path d="M64 77.5v9.2l6.2 4.4" fill="none" stroke="#0d2446" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
