@@ -516,6 +516,9 @@ footer button:hover {
 
 .search-row input:focus {
   border-color: var(--accent);
+  /* A border-colour change alone reads as a slightly lighter edge, not as focus. The ring is a
+     box-shadow so the box does not change size when you tab into it. */
+  box-shadow: 0 0 0 2px rgba(143, 179, 234, 0.3);
 }
 
 /* Spelled out rather than left to the browser's default, which is near-black on a dark box. */

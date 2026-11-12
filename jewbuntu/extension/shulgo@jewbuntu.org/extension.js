@@ -225,10 +225,14 @@ class ShulGoIndicator extends PanelMenu.Button {
         this._searchEntry = new St.Entry({ style_class: 'shulgo-search-entry', can_focus: true, x_expand: true });
 
         // Inline wins over the stylesheet, so the focus ring has to be inline as well or it would never
-        // appear. Two styles, swapped on focus.
-        const entryStyle = (focused) => 'background-color: rgba(11, 18, 32, 0.72);'
-            + ` border: 1px solid ${focused ? '#8fb3ea' : 'rgba(143, 179, 234, 0.3)'};`
-            + ' border-radius: 10px; padding: 6px 11px; color: #ffffff; caret-color: #ffffff;';
+        // appear. Two styles, swapped on focus. A 1px ring in the accent blue read as "a slightly
+        // lighter border" rather than as focus, so focus gets two pixels of it and a navy ground; the
+        // padding drops by the pixel the border gains, so the box doesn't change size as you tab into it.
+        const entryStyle = (focused) => (focused
+            ? 'background-color: rgba(18, 48, 90, 0.9); border: 2px solid #8fb3ea; padding: 5px 10px;'
+            : 'background-color: rgba(11, 18, 32, 0.72);'
+                + ' border: 1px solid rgba(143, 179, 234, 0.3); padding: 6px 11px;')
+            + ' border-radius: 10px; color: #ffffff; caret-color: #ffffff;';
         this._searchEntry.set_style(entryStyle(false));
         this._searchEntry.connect('key-focus-in', () => this._searchEntry.set_style(entryStyle(true)));
         this._searchEntry.connect('key-focus-out', () => this._searchEntry.set_style(entryStyle(false)));
