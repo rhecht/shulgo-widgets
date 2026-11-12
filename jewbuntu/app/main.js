@@ -389,7 +389,9 @@ class ShulGoWindow extends Adw.ApplicationWindow {
         // The banner is how the window says "this is older than it looks" without taking the list away.
         const notice = F.offlineNotice(state, this._store.hasAnything);
         if (notice && this._store.hasAnything) {
-            this._banner.title = `${notice.title} — ${notice.body}`;
+            // AdwBanner gives one line and ellipsises it, so it gets the short form rather than the
+            // title and body run together and cut off mid-sentence.
+            this._banner.title = notice.short;
             this._banner.button_label = 'Try now';
             this._banner.revealed = true;
         } else if (state.error && !state.needsKey && !state.needsPlace && !notice) {

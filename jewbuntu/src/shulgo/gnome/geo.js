@@ -6,6 +6,11 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
+// Gio.DBusProxy.call takes a callback as its sixth argument. Awaiting it without this line means
+// calling it with five, which throws before it ever reaches GeoClue — so the fallback to the typed
+// place fired every time, on every machine, and the log line explaining why scrolled past unread.
+Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
+
 const BUS = 'org.freedesktop.GeoClue2';
 const MANAGER_PATH = '/org/freedesktop/GeoClue2/Manager';
 
@@ -117,7 +122,6 @@ export class Locator {
         this._clientPath = clientPath;
 
         const client = await this._proxy(clientPath, 'org.freedesktop.GeoClue2.Client');
-        client.set_cached_property('DesktopId', new GLib.Variant('s', this._desktopId));
         await client.call('org.freedesktop.DBus.Properties.Set', new GLib.Variant('(ssv)',
             ['org.freedesktop.GeoClue2.Client', 'DesktopId', new GLib.Variant('s', this._desktopId)]),
         Gio.DBusCallFlags.NONE, 5000, null);
@@ -166,7 +170,8 @@ export class Locator {
     destroy() {
         if (this._client) {
             try {
-                this._client.call('Stop', null, Gio.DBusCallFlags.NONE, 2000, null, null);
+                this._client.call('Stop', null, Gio.DBusCallFlags.NONE, 2000, null)
+                    .catch(() => { /* going away anyway */ });
             } catch { /* going away anyway */ }
         }
         this._client = null;

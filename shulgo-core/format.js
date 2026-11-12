@@ -327,21 +327,29 @@ export function offlineNotice(state, hasAnything) {
     const taken = takenAt(state.staleSince);
 
     if (hasAnything) {
+        const title = offline ? 'You’re offline' : 'ShulGo isn’t answering';
+
         return {
             tone: 'resting',
-            title: offline ? 'You’re offline' : 'ShulGo isn’t answering',
+            title,
             body: taken
                 ? `This is the list ${taken}. It’ll catch up on its own.`
                 : 'Showing what was here a moment ago. It’ll catch up on its own.',
+            // One line, for somewhere that gets a single ellipsising line and no wrap — a GTK banner,
+            // a tooltip. Everything that matters and nothing that doesn't.
+            short: taken ? `${title} — showing the list ${taken}` : title,
         };
     }
 
+    const title = offline ? 'You’re offline' : 'ShulGo isn’t answering just now';
+
     return {
         tone: 'resting',
-        title: offline ? 'You’re offline' : 'ShulGo isn’t answering just now',
+        title,
         body: offline
             ? 'Nothing saved yet to show you. The moment you’re back, this fills itself in.'
             : 'Nothing saved yet to show you. It keeps trying in the background.',
+        short: title,
     };
 }
 
