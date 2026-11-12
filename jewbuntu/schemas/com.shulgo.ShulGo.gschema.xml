@@ -7,7 +7,7 @@
   The API key is NOT here: it lives in ~/.config/jewbuntu/shulgo.conf, readable only by its owner.
 -->
 <schemalist>
-  <schema id="org.jewbuntu.shulgo" path="/org/jewbuntu/shulgo/">
+  <schema id="com.shulgo.ShulGo" path="/com/shulgo/ShulGo/">
 
     <key name="api-base-url" type="s">
       <default>'https://shulgo.com/api/v1'</default>

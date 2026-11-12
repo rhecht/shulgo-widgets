@@ -26,6 +26,34 @@ import { makeTransport } from './shulgo/gnome/transport.js';
 import { makeNetwork, makeStorage } from './shulgo/gnome/offline.js';
 import * as F from './shulgo/core/format.js';
 
+/* Laying a box out vertically, in whichever way the running shell understands.
+ *
+ * GNOME 48 added `orientation` to St.BoxLayout and deprecated `vertical`; GNOME 51 removed `vertical`
+ * altogether. So there is no single spelling that covers everything this extension claims to run on:
+ * 45, 46 and 47 have only `vertical`, 51 has only `orientation`, and 48 to 50 accept either. Reaching
+ * for `orientation` everywhere would have fixed Fedora Asahi's GNOME 51 by breaking Ubuntu 24.04's
+ * GNOME 46, which is a worse bug than the one it fixes, because nobody would be looking for it.
+ *
+ * Hence a feature check rather than a version check. A shell cannot be wrong about which properties
+ * it has, whereas its reported version has been wrong before — and this keeps working on GNOME 52
+ * without anyone editing it again.
+ */
+const VERTICAL = (() => {
+    if ('orientation' in St.BoxLayout.prototype)
+        return { orientation: Clutter.Orientation.VERTICAL };
+
+    // Belt and braces. If some future GJS stops putting GObject properties on the prototype, the
+    // check above would quietly answer "no" on a shell that does have `orientation`, and we'd be
+    // back to passing a property that no longer exists. Building one throwaway box settles it.
+    try {
+        new St.BoxLayout({ orientation: Clutter.Orientation.VERTICAL }).destroy();
+
+        return { orientation: Clutter.Orientation.VERTICAL };
+    } catch {
+        return { vertical: true };
+    }
+})();
+
 const TABS = [
     { id: 'minyanim', label: 'Minyanim' },
     { id: 'events', label: 'Events' },
@@ -130,12 +158,12 @@ class ShulGoIndicator extends PanelMenu.Button {
         holder.style_class = 'shulgo-menu-item';
         this._holder = holder;
 
-        const root = new St.BoxLayout({ vertical: true, style_class: 'shulgo-root', x_expand: true });
+        const root = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-root', x_expand: true });
         this._rootBox = root;
 
         // Header: where we are, and the two buttons.
         const header = new St.BoxLayout({ style_class: 'shulgo-header', x_expand: true });
-        const titleBox = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        const titleBox = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
         this._placeLabel = new St.Label({ text: 'ShulGo', style_class: 'shulgo-place' });
         this._dateLabel = new St.Label({ text: '', style_class: 'shulgo-hebrew-date' });
         titleBox.add_child(this._placeLabel);
@@ -190,7 +218,7 @@ class ShulGoIndicator extends PanelMenu.Button {
             x_expand: true,
             y_expand: true,
         });
-        this._content = new St.BoxLayout({ vertical: true, style_class: 'shulgo-content', x_expand: true });
+        this._content = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-content', x_expand: true });
         setScrollChild(this._scroll, this._content);
         root.add_child(this._scroll);
 
@@ -215,7 +243,7 @@ class ShulGoIndicator extends PanelMenu.Button {
 
     /** Type a city; ShulGo says what it could be; pick one. The path that works on any machine. */
     _buildSearch() {
-        this._searchBox = new St.BoxLayout({ vertical: true, style_class: 'shulgo-search', x_expand: true, visible: false });
+        this._searchBox = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-search', x_expand: true, visible: false });
 
         const row = new St.BoxLayout({ style_class: 'shulgo-search-row', x_expand: true });
         // Set on the actor, not asked for in the stylesheet. A shell theme styles StEntry — its
@@ -256,7 +284,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         row.add_child(iconButton('window-close-symbolic', 'Close', () => this._closeSearch()));
         this._searchBox.add_child(row);
 
-        this._searchResults = new St.BoxLayout({ vertical: true, style_class: 'shulgo-search-results', x_expand: true });
+        this._searchResults = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-search-results', x_expand: true });
         this._searchBox.add_child(this._searchResults);
 
         return this._searchBox;
@@ -570,7 +598,7 @@ class ShulGoIndicator extends PanelMenu.Button {
 
         row.add_child(new St.Widget({ style_class: `shulgo-dot shulgo-dot-${urgency}`, y_align: Clutter.ActorAlign.CENTER }));
 
-        const timeBox = new St.BoxLayout({ vertical: true, style_class: 'shulgo-time-box', y_align: Clutter.ActorAlign.CENTER });
+        const timeBox = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-time-box', y_align: Clutter.ActorAlign.CENTER });
         timeBox.add_child(new St.Label({ text: item.display_time || '', style_class: 'shulgo-time' }));
         timeBox.add_child(new St.Label({
             text: F.countdown(F.minutesUntil(item.starts_at)),
@@ -578,7 +606,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         }));
         row.add_child(timeBox);
 
-        const textBox = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        const textBox = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
         const titleRow = new St.BoxLayout({ x_expand: true });
         titleRow.add_child(new St.Label({ text: F.tefillahLabel(item.tefillah), style_class: 'shulgo-row-title' }));
         if (item.kind === 'live')
@@ -627,13 +655,13 @@ class ShulGoIndicator extends PanelMenu.Button {
         for (const event of events.slice(0, this._config.listLength)) {
             const row = new St.BoxLayout({ style_class: 'shulgo-row shulgo-row-event', x_expand: true });
 
-            const dateBox = new St.BoxLayout({ vertical: true, style_class: 'shulgo-time-box', y_align: Clutter.ActorAlign.CENTER });
+            const dateBox = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-time-box', y_align: Clutter.ActorAlign.CENTER });
             dateBox.add_child(new St.Label({ text: F.eventDate(event.date), style_class: 'shulgo-event-date' }));
             if (event.start_time)
                 dateBox.add_child(new St.Label({ text: event.start_time, style_class: 'shulgo-countdown' }));
             row.add_child(dateBox);
 
-            const textBox = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+            const textBox = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
             textBox.add_child(new St.Label({ text: event.title || '', style_class: 'shulgo-row-title' }));
             const where = [event.where, event.online ? 'Online' : '', F.miles(event.distance_miles)]
                 .filter((x) => x).join(' · ');
@@ -663,7 +691,7 @@ class ShulGoIndicator extends PanelMenu.Button {
             const row = new St.BoxLayout({ style_class: 'shulgo-row shulgo-row-mikvah', x_expand: true });
             row.add_child(new St.Widget({ style_class: 'shulgo-dot shulgo-dot-mikvah', y_align: Clutter.ActorAlign.CENTER }));
 
-            const textBox = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+            const textBox = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
             const titleRow = new St.BoxLayout({ x_expand: true });
             titleRow.add_child(new St.Label({ text: mikvah.name || '', style_class: 'shulgo-row-title' }));
             for (const who of mikvah.for ?? [])
@@ -723,7 +751,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         // The zmanim are one table, not a list of separate things, so they sit in one card with hairlines
         // between them — the way the window's AdwPreferencesGroup draws them. The other tabs give each
         // row its own card because each row is its own thing.
-        const card = new St.BoxLayout({ vertical: true, style_class: 'shulgo-zman-card', x_expand: true });
+        const card = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-zman-card', x_expand: true });
         rows.forEach((zman, i) => {
             const last = i === rows.length - 1;
             const row = new St.BoxLayout({
@@ -747,7 +775,7 @@ class ShulGoIndicator extends PanelMenu.Button {
     // ---- the little blocks ------------------------------------------------------------------
 
     _notice(title, body, actionLabel, onAction) {
-        const box = new St.BoxLayout({ vertical: true, style_class: 'shulgo-notice', x_expand: true });
+        const box = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-notice', x_expand: true });
         box.add_child(new St.Label({ text: title, style_class: 'shulgo-notice-title' }));
         box.add_child(new St.Label({ text: body, style_class: 'shulgo-notice-body' }));
         if (actionLabel) {
@@ -764,7 +792,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         const box = new St.BoxLayout({ style_class: 'shulgo-moved', x_expand: true });
         box.add_child(new St.Icon({ icon_name: 'find-location-symbolic', style_class: 'shulgo-moved-icon' }));
 
-        const words = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        const words = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
         words.add_child(new St.Label({
             text: `Your clock says you’re in ${F.placeFromTimezone(zone)} now`,
             style_class: 'shulgo-moved-title',
@@ -794,7 +822,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         const box = new St.BoxLayout({ style_class: 'shulgo-offline', x_expand: true });
         box.add_child(new St.Icon({ icon_name: 'network-offline-symbolic', style_class: 'shulgo-offline-icon' }));
 
-        const words = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        const words = new St.BoxLayout({ ...VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
         words.add_child(new St.Label({ text: notice.title, style_class: 'shulgo-offline-title' }));
         words.add_child(new St.Label({ text: notice.body, style_class: 'shulgo-offline-body' }));
         box.add_child(words);
@@ -808,7 +836,7 @@ class ShulGoIndicator extends PanelMenu.Button {
 
     _errorBox(error) {
         const notice = F.offlineNotice(this._store.state, false);
-        const box = new St.BoxLayout({ vertical: true, style_class: 'shulgo-notice', x_expand: true });
+        const box = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-notice', x_expand: true });
         box.add_child(new St.Icon({ icon_name: 'network-offline-symbolic', style_class: 'shulgo-resting-icon' }));
         box.add_child(new St.Label({ text: notice?.title ?? 'ShulGo couldn’t answer', style_class: 'shulgo-notice-title' }));
         box.add_child(new St.Label({ text: notice?.body ?? error.message ?? '', style_class: 'shulgo-notice-body' }));
@@ -820,7 +848,7 @@ class ShulGoIndicator extends PanelMenu.Button {
     }
 
     _empty(title, body) {
-        const box = new St.BoxLayout({ vertical: true, style_class: 'shulgo-empty', x_expand: true });
+        const box = new St.BoxLayout({ ...VERTICAL, style_class: 'shulgo-empty', x_expand: true });
         box.add_child(new St.Label({ text: title, style_class: 'shulgo-empty-title' }));
         if (body)
             box.add_child(new St.Label({ text: body, style_class: 'shulgo-empty-body' }));
@@ -867,7 +895,7 @@ export default class ShulGoExtension extends Extension {
         });
 
         this._indicator = new ShulGoIndicator(this);
-        Main.panel.addToStatusArea('shulgo@jewbuntu.org', this._indicator, 1, this.config.panelPosition);
+        Main.panel.addToStatusArea('jewbuntu@shulgo.com', this._indicator, 1, this.config.panelPosition);
 
         // The key lives outside GSettings, so watch its file as well as the settings.
         this._watchKeyFile();
@@ -926,6 +954,6 @@ export default class ShulGoExtension extends Extension {
         this._indicator = null;
         indicator.destroy();
         this._indicator = new ShulGoIndicator(this);
-        Main.panel.addToStatusArea('shulgo@jewbuntu.org', this._indicator, 1, this.config.panelPosition);
+        Main.panel.addToStatusArea('jewbuntu@shulgo.com', this._indicator, 1, this.config.panelPosition);
     }
 }

@@ -24,7 +24,7 @@ always say the same thing.
 
 ## What you get
 
-- **A top-bar widget** (GNOME Shell extension, `shulgo@jewbuntu.org`) — the next minyan and a countdown
+- **A top-bar widget** (GNOME Shell extension, `jewbuntu@shulgo.com`) — the next minyan and a countdown
   in the bar, and a menu with four tabs: Minyanim, Events, Mikvaos and Zmanim.
 - **A window** (`shulgo`, in the dock and the app grid) — the same four lists, with a hero card for the
   minyan you can still reach, a place search and the full zmanim table.
@@ -41,7 +41,7 @@ Both are ShulGo navy glass with a gold accent: the same palette as shulgo.com an
 Nothing goes outside `$HOME` and nothing needs root. Then:
 
 ```bash
-gnome-extensions enable shulgo@jewbuntu.org
+gnome-extensions enable jewbuntu@shulgo.com
 ```
 
 On Xorg, log out and back in first. `./install.sh --extension` or `--app` installs one half only, and
@@ -57,7 +57,7 @@ Everything the widget shows comes from ShulGo's API, which wants a key on every 
    - **ShulGo's own app** is the kind to pick if mikvaos should show: mikvah.org's terms restrict those
      listings to ShulGo's own apps. With any other kind the API answers `403` for mikvaos and the widget
      quietly drops that tab — everything else still works.
-2. Open the widget's settings (`gnome-extensions prefs shulgo@jewbuntu.org`, or the gear in the menu),
+2. Open the widget's settings (`gnome-extensions prefs jewbuntu@shulgo.com`, or the gear in the menu),
    go to **ShulGo**, paste the key and press **Save and test**.
 
 The key is written to `~/.config/jewbuntu/shulgo.conf`, readable only by you — not into dconf, which any
@@ -66,7 +66,7 @@ testing against a second ShulGo.
 
 ## Settings
 
-All of it is in one place, shared by both halves (`gsettings`, schema `org.jewbuntu.shulgo`).
+All of it is in one place, shared by both halves (`gsettings`, schema `com.shulgo.ShulGo`).
 
 | | |
 |---|---|
@@ -101,7 +101,7 @@ src/shulgo/gnome/     the parts that are GNOME's
   geo.js              GeoClue
   prefs-pages.js      the settings pages — the widget and the window show the same ones
 
-extension/shulgo@jewbuntu.org/   the top-bar widget (GNOME Shell, St/Clutter)
+extension/jewbuntu@shulgo.com/   the top-bar widget (GNOME Shell, St/Clutter)
 app/                             the window (GTK 4 + libadwaita, also GJS)
 schemas/                         one settings schema, installed into both
 ```

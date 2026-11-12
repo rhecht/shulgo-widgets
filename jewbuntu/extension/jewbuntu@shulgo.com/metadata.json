@@ -1,9 +1,17 @@
 {
-  "uuid": "shulgo@jewbuntu.org",
+  "uuid": "jewbuntu@shulgo.com",
   "name": "ShulGo Minyan Finder",
   "description": "The next minyan near you in the top bar, with upcoming events, mikvaos and today's zmanim — from ShulGo. Part of JewBuntu.",
-  "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "settings-schema": "org.jewbuntu.shulgo",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "settings-schema": "com.shulgo.ShulGo",
   "gettext-domain": "shulgo",
   "url": "https://shulgo.com",
   "version": 1,

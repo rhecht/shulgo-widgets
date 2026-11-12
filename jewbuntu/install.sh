@@ -8,12 +8,12 @@
 #   ./install.sh --uninstall     takes it all out again (your API key and settings stay)
 #
 # After installing the widget, log out and back in on Xorg, or just enable it on Wayland:
-#   gnome-extensions enable shulgo@jewbuntu.org
+#   gnome-extensions enable jewbuntu@shulgo.com
 
 set -euo pipefail
 
-UUID="shulgo@jewbuntu.org"
-SCHEMA_ID="org.jewbuntu.shulgo"
+UUID="jewbuntu@shulgo.com"
+SCHEMA_ID="com.shulgo.ShulGo"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE="$(cd "${HERE}/../shulgo-core" && pwd)"
 
@@ -27,6 +27,20 @@ SYMBOLIC_DIR="${HOME}/.local/share/icons/hicolor/symbolic/apps"
 
 say() { printf '  %s\n' "$*"; }
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+
+# What to type to install something, in the words of the package manager this machine actually has.
+# ShulGo's GNOME half is plain GJS with no compiled part, so it runs wherever GNOME does: Ubuntu,
+# Fedora Asahi Remix on an M-series Mac, Arch. On most of those "sudo apt install" is wrong advice,
+# and wrong advice in an error message is worse than none.
+install_hint() {
+  local deb="$1" rpm="$2" arch="$3"
+  if command -v apt-get >/dev/null 2>&1; then printf 'sudo apt install %s' "${deb}"
+  elif command -v dnf >/dev/null 2>&1; then printf 'sudo dnf install %s' "${rpm}"
+  elif command -v pacman >/dev/null 2>&1; then printf 'sudo pacman -S %s' "${arch}"
+  elif command -v zypper >/dev/null 2>&1; then printf 'sudo zypper install %s' "${rpm}"
+  else printf "it is in your distribution's %s package" "${deb}"
+  fi
+}
 
 need() {
   command -v "$1" >/dev/null 2>&1 || { echo "ShulGo: $1 is needed but isn't installed ($2)." >&2; exit 1; }
@@ -121,12 +135,12 @@ exec gjs -m "${APP_DIR}/main.js" "\$@"
 LAUNCHER
   chmod +x "${BIN_DIR}/shulgo"
 
-  cp "${HERE}/app/org.jewbuntu.ShulGo.svg" "${ICON_DIR}/"
-  cp "${HERE}/extension/${UUID}/icons/shulgo-symbolic.svg" "${SYMBOLIC_DIR}/org.jewbuntu.ShulGo-symbolic.svg"
+  cp "${HERE}/app/com.shulgo.ShulGo.svg" "${ICON_DIR}/"
+  cp "${HERE}/extension/${UUID}/icons/shulgo-symbolic.svg" "${SYMBOLIC_DIR}/com.shulgo.ShulGo-symbolic.svg"
 
   # The launcher has to be on PATH for the .desktop file's Exec to work.
-  sed "s|^Exec=shulgo$|Exec=${BIN_DIR}/shulgo|" "${HERE}/app/org.jewbuntu.ShulGo.desktop" \
-    > "${DESKTOP_DIR}/org.jewbuntu.ShulGo.desktop"
+  sed "s|^Exec=shulgo$|Exec=${BIN_DIR}/shulgo|" "${HERE}/app/com.shulgo.ShulGo.desktop" \
+    > "${DESKTOP_DIR}/com.shulgo.ShulGo.desktop"
 
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${DESKTOP_DIR}" || true
   refresh_icons
@@ -155,8 +169,8 @@ dev_schema() {
 uninstall() {
   step "Removing"
   rm -rf "${EXT_DIR}" "${APP_DIR}"
-  rm -f "${BIN_DIR}/shulgo" "${DESKTOP_DIR}/org.jewbuntu.ShulGo.desktop"
-  rm -f "${ICON_DIR}/org.jewbuntu.ShulGo.svg" "${SYMBOLIC_DIR}/org.jewbuntu.ShulGo-symbolic.svg"
+  rm -f "${BIN_DIR}/shulgo" "${DESKTOP_DIR}/com.shulgo.ShulGo.desktop"
+  rm -f "${ICON_DIR}/com.shulgo.ShulGo.svg" "${SYMBOLIC_DIR}/com.shulgo.ShulGo-symbolic.svg"
   # If ours were the only icons there, take the theme we made with them. Leaving the cache behind is
   # worse than leaving nothing: it still lists an icon whose file has gone, and GTK trusts the per-user
   # hicolor cache ahead of /usr/share — so a system-wide ShulGo installed afterwards draws a blank tile.
@@ -169,7 +183,7 @@ uninstall() {
   rm -f "${SCHEMA_DIR}/${SCHEMA_ID}.gschema.xml"
   command -v glib-compile-schemas >/dev/null 2>&1 && glib-compile-schemas "${SCHEMA_DIR}" 2>/dev/null || true
   say "gone. Your API key (~/.config/jewbuntu/shulgo.conf) and your settings were left alone."
-  say "Remove them too with: rm ~/.config/jewbuntu/shulgo.conf && dconf reset -f /org/jewbuntu/shulgo/"
+  say "Remove them too with: rm ~/.config/jewbuntu/shulgo.conf && dconf reset -f /com/shulgo/ShulGo/"
 }
 
 finish() {
@@ -184,8 +198,8 @@ finish() {
   printf '\n'
 }
 
-need glib-compile-schemas "it comes with libglib2.0-bin"
-need gjs "sudo apt install gjs"
+need glib-compile-schemas "$(install_hint libglib2.0-bin glib2-devel glib2-devel)"
+need gjs "$(install_hint gjs gjs gjs)"
 
 case "${1:---all}" in
   --uninstall) uninstall ;;

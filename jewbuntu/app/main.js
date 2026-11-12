@@ -28,7 +28,7 @@ import { Locator } from './shulgo/gnome/geo.js';
 import { adwaitaColors } from './shulgo/core/palette.js';
 import { accountPage, barPage, placePage } from './shulgo/gnome/prefs-pages.js';
 
-const APP_ID = 'org.jewbuntu.ShulGo';
+const APP_ID = 'com.shulgo.ShulGo';
 
 const SECTIONS = [
     { id: 'minyanim', title: 'Minyanim', icon: 'alarm-symbolic' },

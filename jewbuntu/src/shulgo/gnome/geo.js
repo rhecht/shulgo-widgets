@@ -26,7 +26,7 @@ export class Locator {
      * @param {import('../gnome/settings.js').Config} config
      * @param {string} [desktopId] the .desktop name GeoClue identifies us by
      */
-    constructor(api, config, desktopId = 'org.jewbuntu.ShulGo') {
+    constructor(api, config, desktopId = 'com.shulgo.ShulGo') {
         this._api = api;
         this._config = config;
         this._desktopId = desktopId;

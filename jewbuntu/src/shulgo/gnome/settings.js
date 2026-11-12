@@ -1,6 +1,6 @@
 /* Settings shared by the top-bar widget and the ShulGo app.
  *
- * Everything but the API key lives in GSettings (schema org.jewbuntu.shulgo), so a change in either half
+ * Everything but the API key lives in GSettings (schema com.shulgo.ShulGo), so a change in either half
  * shows up in the other at once. The key itself is kept in ~/.config/jewbuntu/shulgo.conf with owner-only
  * permissions, because dconf is world-readable inside the session and an API key shouldn't be.
  */
@@ -8,7 +8,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-export const SCHEMA_ID = 'org.jewbuntu.shulgo';
+export const SCHEMA_ID = 'com.shulgo.ShulGo';
 
 /** ~/.config/jewbuntu/shulgo.conf */
 export function configPath() {
