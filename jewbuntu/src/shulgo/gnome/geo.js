@@ -101,11 +101,18 @@ export class Locator {
                 return null;
 
             this._fix = { lat, lng, at: now };
+            this._note('ok');
 
             return { lat, lng, label: 'your location', source: 'geoclue' };
         } catch (e) {
             // Location services off, GeoClue missing, or we're not in its allowed list: use the typed place.
+            //
+            // Which of those it was matters to the person who just switched this on and saw nothing
+            // happen, so it is written down where the settings window can read it. Falling back without
+            // a word is what let a bug in this very path hide for a day.
             this._geoclueFailed = true;
+            const refused = /AccessDenied|disabled|not authorized|denied/i.test(e.message ?? '');
+            this._note(refused ? 'off' : 'error');
             log(`ShulGo: no system location (${e.message}); falling back to the typed place.`);
 
             return null;
@@ -151,6 +158,14 @@ export class Locator {
         this._client = client;
 
         return client;
+    }
+
+    /** Leaves word of how it went, for the settings window in the other process. */
+    _note(how) {
+        try {
+            if (this._config.locationStatus !== how)
+                this._config.locationStatus = how;
+        } catch { /* an older settings schema without the key */ }
     }
 
     _proxy(path, iface) {

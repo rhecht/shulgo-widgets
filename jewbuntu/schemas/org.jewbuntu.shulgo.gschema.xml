@@ -122,6 +122,21 @@
       <summary>Which mikvaos to list</summary>
     </key>
 
+    <key name="location-status" type="s">
+      <choices>
+        <choice value="unknown"/>
+        <choice value="ok"/>
+        <choice value="off"/>
+        <choice value="error"/>
+      </choices>
+      <default>'unknown'</default>
+      <summary>How asking this computer for its location went</summary>
+      <description>
+        Written by the widget, read by its settings window, which is a separate program and cannot see
+        inside it. "off" means the system's own Location Services are switched off.
+      </description>
+    </key>
+
     <key name="seen-timezone" type="s">
       <default>''</default>
       <summary>The time zone the place was set in</summary>

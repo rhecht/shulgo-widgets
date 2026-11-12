@@ -111,9 +111,11 @@ export class Config {
     get listLength() { return this.settings.get_int('list-length'); }
     get lastTab() { return this.settings.get_string('last-tab'); }
     get seenTimezone() { return this.settings.get_string('seen-timezone'); }
+    get locationStatus() { return this.settings.get_string('location-status'); }
 
     set lastTab(name) { this.settings.set_string('last-tab', name); }
     set seenTimezone(zone) { this.settings.set_string('seen-timezone', zone || ''); }
+    set locationStatus(how) { this.settings.set_string('location-status', how || 'unknown'); }
     set tefillah(name) { this.settings.set_string('tefillah', name); }
 
     /** The point we last settled on, or null when we've never had one. */

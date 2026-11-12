@@ -75,10 +75,31 @@ export function placePage(settings, apiFor) {
 
     const useGeo = new Adw.SwitchRow({
         title: 'Use this computer’s location',
-        subtitle: 'Asks the system where you are. Needs Location Services switched on in Settings › Privacy.',
+        use_markup: false,
     });
     settings.bind('use-geolocation', useGeo, 'active', Gio.SettingsBindFlags.DEFAULT);
     where.add(useGeo);
+
+    // Say what actually happened last time, rather than leaving someone who switched this on and saw
+    // nothing to wonder whether it is broken. The widget writes this down; we are a separate process
+    // and cannot ask it directly.
+    const sayHow = () => {
+        if (!settings.get_boolean('use-geolocation')) {
+            useGeo.subtitle = 'Off: ShulGo looks near the place below.';
+
+            return;
+        }
+        useGeo.subtitle = {
+            ok: 'Working: ShulGo is using where this computer says it is.',
+            off: 'Your system’s Location Services are switched off, so the place below is being used '
+                + 'instead. Turn them on in Settings, under Privacy.',
+            error: 'This computer couldn’t say where it is, so the place below is being used instead.',
+        }[settings.get_string('location-status')]
+            ?? 'Asks the system where you are. The place below is used whenever it can’t say.';
+    };
+    sayHow();
+    settings.connect('changed::location-status', sayHow);
+    settings.connect('changed::use-geolocation', sayHow);
 
     // What ShulGo makes of what was typed, with the nearest matches to pick from.
     const suggestions = new Adw.ExpanderRow({
