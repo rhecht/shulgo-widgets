@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "ShulGo in the macOS menu bar (and the Windows tray): the next minyan near you, with events, mikvaos and zmanim.",
+  "author": "ShulGo <info@shulgo.com>",
   "main": "src/main/main.js",
   "type": "module",
   "scripts": {
@@ -34,7 +35,7 @@
     },
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "assets/icon.icns",
+      "icon": "assets/icon.png",
       "target": [
         "dmg",
         "zip"
@@ -45,16 +46,36 @@
       }
     },
     "win": {
+      "icon": "assets/icon.png",
       "target": [
-        "nsis"
-      ],
-      "icon": "assets/icon.png"
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
+      "icon": "assets/icon.png",
+      "category": "Utility",
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ],
-      "category": "Utility"
+      "maintainer": "ShulGo <info@shulgo.com>",
+      "synopsis": "The next minyan near you, in the tray",
+      "description": "The next minyan near you in the system tray, with upcoming events, mikvaos and today's zmanim, from ShulGo.",
+      "desktop": {
+        "entry": {
+          "Name": "ShulGo",
+          "Comment": "The next minyan near you",
+          "Keywords": "minyan;shul;synagogue;zmanim;mikvah;davening;",
+          "StartupWMClass": "ShulGo"
+        }
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "ShulGo"
     }
   }
 }

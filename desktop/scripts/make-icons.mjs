@@ -4,7 +4,8 @@
  *   assets/trayTemplate.png      16×16  }  macOS template images: black with an alpha channel, so the
  *   assets/trayTemplate@2x.png   32×32  }  menu bar tints them for light and dark by itself
  *   assets/tray-light.png        32×32     white, for the Windows tray and Linux
- *   assets/icon.png             512×512    the app icon, in ShulGo's navy and gold
+ *   assets/icon.png            1024×1024   the app icon, in ShulGo's navy and gold (electron-builder makes
+ *                                           the .icns and .ico from it, and wants 1024 for macOS)
  *
  * Shapes are filled by asking, for each pixel, whether it is inside — with a little oversampling so the
  * arch doesn't come out jagged.
@@ -183,7 +184,7 @@ const NAVY_BOTTOM = [13, 36, 70];
 const CREAM = [246, 247, 251, 1];
 const GOLD = [242, 183, 5, 1];
 
-writeFileSync(join(assets, 'icon.png'), png(512, 512, draw(512, (x, y) => {
+writeFileSync(join(assets, 'icon.png'), png(1024, 1024, draw(1024, (x, y) => {
     // A rounded square, inset a little the way macOS icons are.
     const inset = 0.08;
     const radius = 0.21;
