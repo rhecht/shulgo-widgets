@@ -10,6 +10,81 @@ import Gio from 'gi://Gio';
 
 export const SCHEMA_ID = 'com.shulgo.ShulGo';
 
+/** Where the settings used to live, before jewbuntu.org turned out not to be ours. */
+export const OLD_SCHEMA_ID = 'org.jewbuntu.shulgo';
+
+/**
+ * Brings settings across from the old namespace, once.
+ *
+ * Renaming a GSettings schema does not move anybody's data. The values stay in dconf under
+ * /org/jewbuntu/shulgo/, and once the old schema file is gone nothing can read them, because
+ * GSettings will not touch a path it has no schema for. So the old schema is still shipped as a
+ * shim (schemas/org.jewbuntu.shulgo.gschema.xml) purely so this function can read it one last time.
+ *
+ * Only keys the person actually changed are copied: get_user_value() answers null for anything still
+ * at its default, so an upgrade cannot resurrect an old default over a new one. Keys that no longer
+ * exist, or whose type has changed, are skipped rather than guessed at.
+ *
+ * Nothing here is allowed to stop the widget starting. A migration that fails is a lost preference;
+ * a migration that throws during enable() is a widget that does not appear at all.
+ *
+ * @param {Gio.Settings} settings the new, current settings
+ * @returns {number} how many keys were brought across
+ */
+export function migrateFromOldNamespace(settings) {
+    try {
+        if (settings.get_boolean('migrated-from-jewbuntu'))
+            return 0;
+    } catch {
+        // An older schema without the flag: there is nothing this function can safely do.
+        return 0;
+    }
+
+    let moved = 0;
+    try {
+        // Deliberately NOT `new Gio.Settings({schema_id})`. GSettings treats an unknown schema as a
+        // programming error and aborts the whole process — it does not throw something catchable —
+        // so the schema has to be looked up first, and most machines will not have the old one.
+        const source = Gio.SettingsSchemaSource.get_default();
+        const oldSchema = source ? source.lookup(OLD_SCHEMA_ID, true) : null;
+
+        if (oldSchema) {
+            const old = new Gio.Settings({ settings_schema: oldSchema });
+            const mine = settings.settings_schema;
+
+            for (const key of oldSchema.list_keys()) {
+                if (key === 'migrated-from-jewbuntu' || !mine.has_key(key))
+                    continue;
+
+                // null means "still the default here", which is nothing worth carrying over.
+                const value = old.get_user_value(key);
+                if (!value)
+                    continue;
+
+                // A type that changed between the two would make set_value fail loudly; skipping is
+                // the honest answer, since we have no idea what the old value should become.
+                if (!value.get_type().equal(mine.get_key(key).get_value_type()))
+                    continue;
+
+                settings.set_value(key, value);
+                moved++;
+            }
+        }
+    } catch (e) {
+        try {
+            console.warn(`ShulGo: could not bring the old settings across: ${e}`);
+        } catch { /* nowhere to log */ }
+    }
+
+    // Set even when nothing moved, and even after a failure. Retrying on every start would mean a
+    // person who deliberately changed a setting back had it overwritten again the next morning.
+    try {
+        settings.set_boolean('migrated-from-jewbuntu', true);
+    } catch { /* nothing more to be done */ }
+
+    return moved;
+}
+
 /** ~/.config/jewbuntu/shulgo.conf */
 export function configPath() {
     return GLib.build_filenamev([GLib.get_user_config_dir(), 'jewbuntu', 'shulgo.conf']);
@@ -95,6 +170,9 @@ export class Config {
     constructor(settings) {
         this.settings = settings;
         this._handlers = [];
+        // Both halves build a Config, so this is the one place that catches either of them starting
+        // first. After the first run it is a single boolean read.
+        migrateFromOldNamespace(settings);
     }
 
     get baseUrl() { return this.settings.get_string('api-base-url'); }

@@ -163,5 +163,15 @@
       <summary>How many rows a list in the top-bar menu shows</summary>
     </key>
 
+    <key name="migrated-from-jewbuntu" type="b">
+      <default>false</default>
+      <summary>Whether the old org.jewbuntu.shulgo settings have been brought across</summary>
+      <description>
+        Set once, by migrateFromOldNamespace(). Not a preference — nobody should ever change it by
+        hand, and it exists only so the copy happens exactly once. See the shim schema
+        org.jewbuntu.shulgo.gschema.xml, which can be deleted along with this key a release from now.
+      </description>
+    </key>
+
   </schema>
 </schemalist>

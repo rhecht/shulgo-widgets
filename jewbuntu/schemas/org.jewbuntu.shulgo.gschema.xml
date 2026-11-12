@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A MIGRATION SHIM, and nothing else. Do not add keys here.
+
+  ShulGo's settings used to live under org.jewbuntu.shulgo at /org/jewbuntu/shulgo/. They moved to
+  com.shulgo.ShulGo at /com/shulgo/ShulGo/ because Rafi does not own jewbuntu.org and the old name
+  was claiming a namespace on a domain that is not his.
+
+  Renaming the schema does not move anybody's saved settings: the values stay in dconf under the old
+  path, where nothing can read them once the old schema is gone, because GSettings will not read a
+  path it has no schema for. So this file is shipped for one more release purely so that
+  migrateFromOldNamespace() in src/shulgo/gnome/settings.js can read those values once and copy them
+  across. After that it is dead weight and should be deleted.
+
+  Keeping it is not a renewed claim on jewbuntu.org. It is how we read our own old data.
+-->
+<schemalist>
+  <schema id="org.jewbuntu.shulgo" path="/org/jewbuntu/shulgo/">
+
+    <key name="api-base-url" type="s">
+      <default>'https://shulgo.com/api/v1'</default>
+      <summary>ShulGo API address</summary>
+      <description>Where the ShulGo API v1 lives. Change it only to point at your own ShulGo.</description>
+    </key>
+
+    <key name="use-geolocation" type="b">
+      <default>true</default>
+      <summary>Use this computer's location</summary>
+      <description>Ask the system where we are (GeoClue). Off, or when it can't say, the typed place is used.</description>
+    </key>
+
+    <key name="place" type="s">
+      <default>''</default>
+      <summary>The place to look near</summary>
+      <description>A city, neighborhood or zip: "Lakewood, NJ", "Boro Park", "11230", "Antwerp".</description>
+    </key>
+
+    <key name="latitude" type="d">
+      <default>0.0</default>
+      <summary>Last known latitude</summary>
+    </key>
+
+    <key name="longitude" type="d">
+      <default>0.0</default>
+      <summary>Last known longitude</summary>
+    </key>
+
+    <key name="location-label" type="s">
+      <default>''</default>
+      <summary>What to call the place on screen</summary>
+    </key>
+
+    <key name="window-minutes" type="i">
+      <range min="15" max="360"/>
+      <default>120</default>
+      <summary>How far ahead to look, in minutes</summary>
+    </key>
+
+    <key name="travel-mode" type="s">
+      <choices>
+        <choice value="drive"/>
+        <choice value="walk"/>
+      </choices>
+      <default>'drive'</default>
+      <summary>How you get there</summary>
+      <description>Used to work out whether you can still make it in time.</description>
+    </key>
+
+    <key name="tefillah" type="s">
+      <choices>
+        <choice value="next"/>
+        <choice value="shacharis"/>
+        <choice value="mincha"/>
+        <choice value="maariv"/>
+      </choices>
+      <default>'next'</default>
+      <summary>Which tefillah to show</summary>
+    </key>
+
+    <key name="refresh-seconds" type="i">
+      <range min="60" max="3600"/>
+      <default>300</default>
+      <summary>How often to ask ShulGo again, in seconds</summary>
+    </key>
+
+    <key name="panel-text" type="s">
+      <choices>
+        <choice value="full"/>
+        <choice value="countdown"/>
+        <choice value="time"/>
+        <choice value="icon"/>
+      </choices>
+      <default>'full'</default>
+      <summary>What the top bar shows</summary>
+      <description>full: "Mincha 1:30 · 15m". countdown: "15m". time: "1:30". icon: the icon alone.</description>
+    </key>
+
+    <key name="panel-position" type="s">
+      <choices>
+        <choice value="right"/>
+        <choice value="center"/>
+        <choice value="left"/>
+      </choices>
+      <default>'right'</default>
+      <summary>Where in the top bar it sits</summary>
+    </key>
+
+    <key name="glass" type="s">
+      <choices>
+        <choice value="blur"/>
+        <choice value="tint"/>
+        <choice value="solid"/>
+      </choices>
+      <default>'tint'</default>
+      <summary>How see-through the widget is</summary>
+      <description>
+        blur: frosted glass, with the desktop blurred behind it. tint: see-through, no blur.
+        solid: ShulGo navy, nothing showing through.
+      </description>
+    </key>
+
+    <key name="mikvah-for" type="s">
+      <choices>
+        <choice value="all"/>
+        <choice value="women"/>
+        <choice value="men"/>
+        <choice value="keilim"/>
+      </choices>
+      <default>'all'</default>
+      <summary>Which mikvaos to list</summary>
+    </key>
+
+    <key name="location-status" type="s">
+      <choices>
+        <choice value="unknown"/>
+        <choice value="ok"/>
+        <choice value="off"/>
+        <choice value="error"/>
+      </choices>
+      <default>'unknown'</default>
+      <summary>How asking this computer for its location went</summary>
+      <description>
+        Written by the widget, read by its settings window, which is a separate program and cannot see
+        inside it. "off" means the system's own Location Services are switched off.
+      </description>
+    </key>
+
+    <key name="seen-timezone" type="s">
+      <default>''</default>
+      <summary>The time zone the place was set in</summary>
+      <description>
+        When the machine's time zone stops matching this, the laptop has probably travelled, and the
+        widget asks whether to look somewhere else. Not a setting anyone needs to touch.
+      </description>
+    </key>
+
+    <key name="last-tab" type="s">
+      <choices>
+        <choice value="minyanim"/>
+        <choice value="events"/>
+        <choice value="mikvaos"/>
+        <choice value="zmanim"/>
+      </choices>
+      <default>'minyanim'</default>
+      <summary>The tab that was open last</summary>
+    </key>
+
+    <key name="list-length" type="i">
+      <range min="3" max="40"/>
+      <default>8</default>
+      <summary>How many rows a list in the top-bar menu shows</summary>
+    </key>
+
+  </schema>
+</schemalist>

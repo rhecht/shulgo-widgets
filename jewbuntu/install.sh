@@ -14,6 +14,9 @@ set -euo pipefail
 
 UUID="jewbuntu@shulgo.com"
 SCHEMA_ID="com.shulgo.ShulGo"
+# Shipped alongside, for one release only, so settings saved under the old org.jewbuntu.shulgo name
+# can be read once and brought across. See schemas/org.jewbuntu.shulgo.gschema.xml.
+OLD_SCHEMA_ID="org.jewbuntu.shulgo"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE="$(cd "${HERE}/../shulgo-core" && pwd)"
 
@@ -60,6 +63,7 @@ install_schema() {
   step "Settings schema"
   mkdir -p "${SCHEMA_DIR}"
   cp "${HERE}/schemas/${SCHEMA_ID}.gschema.xml" "${SCHEMA_DIR}/"
+  cp "${HERE}/schemas/${OLD_SCHEMA_ID}.gschema.xml" "${SCHEMA_DIR}/"
   glib-compile-schemas "${SCHEMA_DIR}"
   say "installed in ${SCHEMA_DIR}"
 }
@@ -78,6 +82,7 @@ install_extension() {
   # A Shell extension reads its own schema directory, so it gets its own compiled copy.
   mkdir -p "${EXT_DIR}/schemas"
   cp "${HERE}/schemas/${SCHEMA_ID}.gschema.xml" "${EXT_DIR}/schemas/"
+  cp "${HERE}/schemas/${OLD_SCHEMA_ID}.gschema.xml" "${EXT_DIR}/schemas/"
   glib-compile-schemas "${EXT_DIR}/schemas"
   say "installed in ${EXT_DIR}"
 }
@@ -157,6 +162,7 @@ dev_schema() {
   step "Schema for running from this checkout"
   mkdir -p "${HERE}/schemas/build"
   cp "${HERE}/schemas/${SCHEMA_ID}.gschema.xml" "${HERE}/schemas/build/"
+  cp "${HERE}/schemas/${OLD_SCHEMA_ID}.gschema.xml" "${HERE}/schemas/build/"
   glib-compile-schemas "${HERE}/schemas/build"
   mkdir -p "${HERE}/app/shulgo"
   ln -sfn "${CORE}" "${HERE}/app/shulgo/core"
@@ -180,7 +186,7 @@ uninstall() {
   else
     refresh_icons
   fi
-  rm -f "${SCHEMA_DIR}/${SCHEMA_ID}.gschema.xml"
+  rm -f "${SCHEMA_DIR}/${SCHEMA_ID}.gschema.xml" "${SCHEMA_DIR}/${OLD_SCHEMA_ID}.gschema.xml"
   command -v glib-compile-schemas >/dev/null 2>&1 && glib-compile-schemas "${SCHEMA_DIR}" 2>/dev/null || true
   say "gone. Your API key (~/.config/jewbuntu/shulgo.conf) and your settings were left alone."
   say "Remove them too with: rm ~/.config/jewbuntu/shulgo.conf && dconf reset -f /com/shulgo/ShulGo/"
