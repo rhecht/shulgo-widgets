@@ -4,6 +4,8 @@
   "private": true,
   "description": "ShulGo in the macOS menu bar (and the Windows tray): the next minyan near you, with events, mikvaos and zmanim.",
   "author": "ShulGo <info@shulgo.com>",
+  "homepage": "https://shulgo.com",
+  "license": "SEE LICENSE IN ../../LICENSE",
   "main": "src/main/main.js",
   "type": "module",
   "scripts": {
