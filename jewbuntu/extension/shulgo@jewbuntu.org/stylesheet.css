@@ -573,17 +573,9 @@
   spacing: 6px;
 }
 
-.shulgo-search-entry {
-  border-radius: 9px;
-  padding: 5px 10px;
-  color: #f2f4f7;
-  background-color: rgba(11, 18, 32, 0.6);
-  border: 1px solid rgba(143, 179, 234, 0.25);
-}
-
-.shulgo-search-entry:focus {
-  border: 1px solid #8fb3ea;
-}
+/* Nothing about the entry is here. Its look, its placeholder and its focus ring are all set inline in
+ * _buildSearch, because a shell theme styles StEntry and outranks a stylesheet — which is how it first
+ * came out dark text on a dark box with corners that were not ours. */
 
 .shulgo-search-results {
   spacing: 2px;

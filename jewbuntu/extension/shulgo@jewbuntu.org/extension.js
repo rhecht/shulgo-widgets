@@ -218,12 +218,26 @@ class ShulGoIndicator extends PanelMenu.Button {
         this._searchBox = new St.BoxLayout({ vertical: true, style_class: 'shulgo-search', x_expand: true, visible: false });
 
         const row = new St.BoxLayout({ style_class: 'shulgo-search-row', x_expand: true });
-        this._searchEntry = new St.Entry({
-            style_class: 'shulgo-search-entry',
-            hint_text: 'A city, neighborhood or zip',
-            can_focus: true,
-            x_expand: true,
-        });
+        // Set on the actor, not asked for in the stylesheet. A shell theme styles StEntry — its
+        // background, its border, its corners and the colour of its text — and it outranks us, which is
+        // how the box ended up with dark text on dark and corners that were not ours. Same answer as
+        // the menu surface: inline, where there is nothing to win or lose.
+        this._searchEntry = new St.Entry({ style_class: 'shulgo-search-entry', can_focus: true, x_expand: true });
+
+        // Inline wins over the stylesheet, so the focus ring has to be inline as well or it would never
+        // appear. Two styles, swapped on focus.
+        const entryStyle = (focused) => 'background-color: rgba(11, 18, 32, 0.72);'
+            + ` border: 1px solid ${focused ? '#8fb3ea' : 'rgba(143, 179, 234, 0.3)'};`
+            + ' border-radius: 10px; padding: 6px 11px; color: #ffffff; caret-color: #ffffff;';
+        this._searchEntry.set_style(entryStyle(false));
+        this._searchEntry.connect('key-focus-in', () => this._searchEntry.set_style(entryStyle(true)));
+        this._searchEntry.connect('key-focus-out', () => this._searchEntry.set_style(entryStyle(false)));
+
+        // The placeholder gets its own actor for the same reason: the one St makes takes the theme's
+        // colour, and on a dark box that was unreadable.
+        const hint = new St.Label({ text: 'A city, neighborhood or zip' });
+        hint.set_style('color: #aeb9c9;');
+        this._searchEntry.set_hint_actor(hint);
         this._searchEntry.clutter_text.connect('text-changed', () => this._searchLater());
         this._searchEntry.clutter_text.connect('key-press-event', (_t, event) => {
             if (event.get_key_symbol() === Clutter.KEY_Escape) {

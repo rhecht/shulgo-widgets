@@ -518,6 +518,12 @@ footer button:hover {
   border-color: var(--accent);
 }
 
+/* Spelled out rather than left to the browser's default, which is near-black on a dark box. */
+.search-row input::placeholder {
+  color: #aeb9c9;
+  opacity: 1;
+}
+
 .search-results {
   display: flex;
   flex-direction: column;
