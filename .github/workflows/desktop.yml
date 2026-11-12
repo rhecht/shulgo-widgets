@@ -1,0 +1,99 @@
+# Builds the ShulGo desktop widget for all three desktops at once.
+#
+# Why this exists: desktop is one Electron codebase that already knows how to be a macOS
+# menu-bar app, a Windows tray app and a Linux tray app — but each installer can only be made ON the
+# system it is for. Rather than hunting for a Windows machine and a Linux machine, GitHub lends us one
+# of each for the length of a build.
+#
+# Nothing here is signed. An unsigned Mac build warns on first open; an unsigned Windows installer gets
+# a SmartScreen warning. Signing needs secrets (and, on Windows, a bought certificate), and is a
+# separate step — see docs/TODO.md.
+name: Build the desktop widget
+# On demand, or on a release tag. Deliberately NOT on every push: three machines for a documentation
+# typo is waste, and mixing a paths filter with a tags filter is the kind of GitHub subtlety that ends
+# with a release tag quietly building nothing.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+permissions:
+  contents: write
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false        # a Windows failure shouldn't throw away a good Mac build
+      matrix:
+        include:
+          - os: macos-latest
+            name: mac
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux
+          # Asahi Linux and Fedora Asahi Remix run on Apple Silicon, which is arm64: the amd64
+          # AppImage and .deb above will not start there at all. GitHub lends arm64 Linux runners,
+          # free on a public repository, so this is one more matrix row rather than a problem.
+          # electron-builder takes the runner's own architecture when none is pinned, so the same
+          # `npm run dist` yields arm64 here and the file names carry an -arm64 suffix.
+          - os: ubuntu-24.04-arm
+            name: linux-arm64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build
+        # predist copies ../shulgo-core in. --publish never: we attach the files ourselves below, so a
+        # missing token is never an error.
+        run: npm run dist -- --publish never
+        env:
+          # Without this, electron-builder goes looking for a signing identity in the runner's empty
+          # keychain and fails rather than producing an unsigned build.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Keep the installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: shulgo-desktop-${{ matrix.name }}
+          # Only what a person would install. The unpacked tree and the blockmaps are build litter.
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    # Only for a deliberate tag: `git tag desktop-v1.0.0 && git push origin desktop-v1.0.0`.
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
+          draft: true            # so nothing reaches anyone before you have looked at it
+          name: ShulGo desktop ${{ github.ref_name }}
+          body: |
+            The ShulGo desktop widget: the next minyan near you in the menu bar or tray, with events,
+            mikvaos and today's zmanim.
+
+            These builds are **not signed yet**. macOS will say the app is from an unidentified
+            developer (right-click › Open the first time); Windows SmartScreen will warn before the
+            installer runs. Linux AppImage and .deb need no signature.
