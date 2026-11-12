@@ -5,7 +5,7 @@
   "description": "ShulGo in the macOS menu bar (and the Windows tray): the next minyan near you, with events, mikvaos and zmanim.",
   "author": "ShulGo <info@shulgo.com>",
   "homepage": "https://shulgo.com",
-  "license": "SEE LICENSE IN ../../LICENSE",
+  "license": "UNLICENSED",
   "main": "src/main/main.js",
   "type": "module",
   "scripts": {
@@ -55,7 +55,7 @@
       ]
     },
     "linux": {
-      "icon": "assets/icon.png",
+      "icon": "assets/icons",
       "category": "Utility",
       "target": [
         "AppImage",
@@ -65,12 +65,12 @@
       "synopsis": "The next minyan near you, in the tray",
       "description": "The next minyan near you in the system tray, with upcoming events, mikvaos and today's zmanim, from ShulGo.",
       "desktop": {
-        "entry": {
-          "Name": "ShulGo",
-          "Comment": "The next minyan near you",
-          "Keywords": "minyan;shul;synagogue;zmanim;mikvah;davening;",
-          "StartupWMClass": "ShulGo"
-        }
+        "Name": "ShulGo",
+        "GenericName": "Minyan finder",
+        "Comment": "The next minyan near you",
+        "Keywords": "minyan;shul;synagogue;zmanim;mikvah;davening;",
+        "Categories": "Utility;Network;",
+        "StartupWMClass": "ShulGo"
       }
     },
     "nsis": {

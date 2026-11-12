@@ -6,6 +6,7 @@
  *   assets/tray-light.png        32×32     white, for the Windows tray and Linux
  *   assets/icon.png            1024×1024   the app icon, in ShulGo's navy and gold (electron-builder makes
  *                                           the .icns and .ico from it, and wants 1024 for macOS)
+ *   assets/icons/NxN.png       16…1024     the same icon at every size a Linux icon theme asks for
  *
  * Shapes are filled by asking, for each pixel, whether it is inside — with a little oversampling so the
  * arch doesn't come out jagged.
@@ -184,7 +185,7 @@ const NAVY_BOTTOM = [13, 36, 70];
 const CREAM = [246, 247, 251, 1];
 const GOLD = [242, 183, 5, 1];
 
-writeFileSync(join(assets, 'icon.png'), png(1024, 1024, draw(1024, (x, y) => {
+const appIcon = (x, y) => {
     // A rounded square, inset a little the way macOS icons are.
     const inset = 0.08;
     const radius = 0.21;
@@ -213,6 +214,19 @@ writeFileSync(join(assets, 'icon.png'), png(1024, 1024, draw(1024, (x, y) => {
         Math.round(NAVY_TOP[2] + (NAVY_BOTTOM[2] - NAVY_TOP[2]) * t),
         1,
     ];
-})));
+};
 
-console.log('wrote trayTemplate.png, trayTemplate@2x.png, tray-light.png, icon.png');
+// macOS and Windows take the one big square and make their own .icns/.ico from it.
+writeFileSync(join(assets, 'icon.png'), png(1024, 1024, draw(1024, appIcon)));
+
+// Linux wants a whole set instead. A lone 1024 icon means every menu, dock and Alt-Tab scales a
+// one-megapixel image down on the fly, and some icon loaders simply skip a size they weren't
+// expecting — so write the sizes a hicolor theme actually looks for. electron-builder picks these up
+// by pointing linux.icon at the directory.
+const iconDir = join(assets, 'icons');
+mkdirSync(iconDir, { recursive: true });
+const sizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
+for (const size of sizes)
+    writeFileSync(join(iconDir, `${size}x${size}.png`), png(size, size, draw(size, appIcon)));
+
+console.log(`wrote trayTemplate.png, trayTemplate@2x.png, tray-light.png, icon.png, icons/ (${sizes.join(', ')})`);
