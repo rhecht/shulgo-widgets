@@ -22,13 +22,15 @@ url='https://shulgo.com'
 # this cannot go to the AUR until there is one — Arch requires a custom licence be shipped under
 # /usr/share/licenses/$pkgname/. Deliberately left as a blocker rather than papered over.
 license=('custom:unsettled')
-depends=('python' 'python-gobject' 'gtk3')
-optdepends=(
-  'libayatana-appindicator: a StatusNotifierItem tray icon. Strongly recommended — without it the
-widget falls back to the deprecated Gtk.StatusIcon, which works but gets no label beside the icon'
-  'xfce4-statusnotifier-plugin: if your Xfce panel ignores StatusNotifierItem items'
-  'python-gobject: already a dependency; listed so it is clear GTK3 bindings are what is wanted'
-)
+# Measured on Arch Linux 32 i686, not guessed: AyatanaAppIndicator3 0.1 is the typelib that exists
+# there (libayatana-appindicator 0.6.0) and the older AppIndicator3 is simply absent, so the tray
+# library is a hard dependency rather than an optional one. The code still falls back to
+# Gtk.StatusIcon where neither is installed, but that is a courtesy to other distributions, not
+# something to make an Arch user discover.
+depends=('python' 'python-gobject' 'gtk3' 'libayatana-appindicator')
+# Deliberately NOT depending on xfce4-statusnotifier-plugin: Xfce 4.18's own systray (xfce4-panel's
+# libsystray) already contains the StatusNotifierWatcher, and that package does not exist in Arch
+# Linux 32 at all. Depending on it would make this uninstallable to no purpose.
 makedepends=()
 checkdepends=()
 source=("$pkgname-$pkgver.tar.gz::https://github.com/rhecht/shulgo-widgets/archive/refs/tags/xfce-v$pkgver.tar.gz")

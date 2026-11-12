@@ -39,6 +39,19 @@ Treat the first run as the first run. `python3 -m shulgo_xfce --check` is there 
 moment — it reports which tray library is installed, whether there is a display, and whether a key and
 a place have been saved, which are the three things that make a tray icon silently not appear.
 
+## If every GTK program on Arch Linux 32 is broken, it isn't this one
+
+Worth knowing before you conclude the widget is at fault, because the symptom looks exactly like a bug
+in here. As of November 2026, Arch Linux 32's i686 repositories ship pango 1:1.58.2, which needs
+`FcConfigSetDefaultSubstitute`, against fontconfig 2.14.1 from 2022, which does not have it — and
+pangoft2 is linked `BIND_NOW`, so the failure happens at load rather than at first use. Everything
+GTK falls over: xfwm4, xfce4-panel, thunar, and PyGObject's Gtk and Gdk. From Python it surfaces as an
+`AssertionError` inside `gi/overrides/Gdk.py`, which reads like our problem and is not.
+
+The workaround, verified by the Jewbuntu Arch port: install pango `1:1.54.0-1.0` from
+archive.archlinux32.org, check its signature, and hold it with `IgnorePkg` until fontconfig is
+rebuilt. 1.54.0, 1.52.2 and 1.50.14 load; 1.57.1 and 1.58.2-1.1 do not.
+
 ## Trying it
 
 ```sh
@@ -100,6 +113,12 @@ A 4xx is never papered over with old data. Yesterday's minyanim behind a bad key
 thing worth telling you.
 
 ## Packaging
+
+Dependencies are what the Jewbuntu Arch port measured on i686, not what seemed likely:
+`python python-gobject gtk3 libayatana-appindicator`. `AyatanaAppIndicator3` 0.1 is the typelib that
+exists there and the older `AppIndicator3` is absent, so the tray library is a hard dependency. There
+is deliberately no dependency on `xfce4-statusnotifier-plugin` — Xfce 4.18's own systray already
+contains the StatusNotifierWatcher, and that package does not exist in Arch Linux 32 at all.
 
 `packaging/PKGBUILD` builds an `arch=('any')` package: no compiled code, so the same package serves
 i686, x86_64 and the arm64 of an Apple Silicon machine. No install scripts, and nothing written into
