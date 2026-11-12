@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ShulGo: the shul's arched doorway with a clock hand, the same mark the other builds draw in code.
+     Flat shapes and no filters on purpose: this gets drawn by a software renderer on a 1 GHz CPU. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>ShulGo</title>
+  <rect x="2" y="2" width="44" height="44" rx="10" fill="#12305a"/>
+  <!-- the walls and the roof -->
+  <path d="M12 40V20l12-9 12 9v20z" fill="#1d4b85"/>
+  <path d="M24 9 10 20h28z" fill="#f2b705"/>
+  <!-- the arched doorway -->
+  <path d="M19 40V28a5 5 0 0 1 10 0v12z" fill="#0b1220"/>
+  <!-- the clock hand, pointing at the next minyan -->
+  <circle cx="24" cy="30" r="1.6" fill="#ffd54f"/>
+  <path d="M24 30V24" stroke="#ffd54f" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M24 30h4" stroke="#ffd54f" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

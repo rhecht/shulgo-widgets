@@ -94,7 +94,10 @@ export function countdownShort(minutes) {
 
 /** 0.49 → "0.5 mi"; 12.4 → "12 mi". */
 export function miles(value) {
-    if (value === null || value === undefined)
+    // The empty string is checked for by name because Number('') is 0, not NaN: without this an empty
+    // distance printed "0.0 mi" and told someone the shul was where they were standing. A distance we
+    // don't have has to come out as nothing at all.
+    if (value === null || value === undefined || value === '')
         return '';
     const n = Number(value);
     if (!Number.isFinite(n))
@@ -128,7 +131,13 @@ export function urgency(item) {
         return 'missed';
     if (item?.can_make_it === null || item?.can_make_it === undefined)
         return 'unknown';
-    const buffer = Number(item.buffer_min);
+    // Number(null) is 0 but Number(undefined) is NaN, so coercing straight to a number made a null
+    // buffer read as 'tight' while an absent one read as 'comfortable' — the same absence of
+    // information, reported two different ways. Absence is handled first so it means one thing.
+    // can_make_it is already true by this point: ShulGo believes you can get there, and with no
+    // buffer figure to contradict that there is no reason to tell anyone to run.
+    const raw = item.buffer_min;
+    const buffer = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
 
     return Number.isFinite(buffer) && buffer <= 5 ? 'tight' : 'comfortable';
 }

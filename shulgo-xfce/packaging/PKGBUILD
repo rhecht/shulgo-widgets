@@ -1,0 +1,64 @@
+# Maintainer: ShulGo <info@shulgo.com>
+#
+# ShulGo's minyan widget for Xfce and any other X11 panel with a system tray. Built to the Jewbuntu
+# Arch port's constraints: arch=('any'), no install scripts, and nothing written into a home
+# directory by root — the widget makes its own files, as the user, the first time it runs.
+#
+# BEFORE THIS CAN GO ANYWHERE: the source tag below does not exist yet and the checksum is SKIP. Once
+# the tag is pushed, run `updpkgsums` in this directory and commit the real sha256. A package with
+# SKIP verifies nothing it downloads, which is fine while testing from a VM and not fine in the AUR.
+#
+# It is deliberately arch=('any'): there is no compiled code here, which is the whole reason this
+# exists rather than the Electron build — it runs the same on i686, x86_64 and the arm64 of an
+# Asahi machine.
+
+pkgname=shulgo-xfce
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="The next minyan near you in the tray, with today's zmanim, from ShulGo"
+arch=('any')
+url='https://shulgo.com'
+# Not settled. ShulGo has not chosen a licence yet, so there is no licence file to install here and
+# this cannot go to the AUR until there is one — Arch requires a custom licence be shipped under
+# /usr/share/licenses/$pkgname/. Deliberately left as a blocker rather than papered over.
+license=('custom:unsettled')
+depends=('python' 'python-gobject' 'gtk3')
+optdepends=(
+  'libayatana-appindicator: a StatusNotifierItem tray icon. Strongly recommended — without it the
+widget falls back to the deprecated Gtk.StatusIcon, which works but gets no label beside the icon'
+  'xfce4-statusnotifier-plugin: if your Xfce panel ignores StatusNotifierItem items'
+  'python-gobject: already a dependency; listed so it is clear GTK3 bindings are what is wanted'
+)
+makedepends=()
+checkdepends=()
+source=("$pkgname-$pkgver.tar.gz::https://github.com/rhecht/shulgo-widgets/archive/refs/tags/xfce-v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+_src="shulgo-widgets-xfce-v$pkgver/shulgo-xfce"
+
+check() {
+  cd "$srcdir/$_src"
+  # The wording tests compare against answers generated from the canonical JavaScript and committed
+  # as tests/expected.json, so node is not needed here. They skip themselves if the time zone does
+  # not match the one they were generated under, which is why TZ is set.
+  TZ=America/Toronto python3 -m unittest discover -s tests
+}
+
+package() {
+  cd "$srcdir/$_src"
+
+  # Its own directory rather than site-packages: nothing to collide with, and a Python upgrade does
+  # not strand it. bin/shulgo-xfce is the only thing that knows the path.
+  install -d "$pkgdir/usr/lib/shulgo-xfce/shulgo_xfce"
+  install -Dm644 shulgo_xfce/*.py "$pkgdir/usr/lib/shulgo-xfce/shulgo_xfce/"
+
+  install -Dm755 bin/shulgo-xfce "$pkgdir/usr/bin/shulgo-xfce"
+  install -Dm644 packaging/shulgo-xfce.desktop \
+    "$pkgdir/usr/share/applications/shulgo-xfce.desktop"
+  install -Dm644 packaging/shulgo.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/shulgo.svg"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+
+  # No .install file on purpose: pacman's own hooks rebuild the icon cache and the desktop database,
+  # and nothing here needs to run as root at install time.
+}

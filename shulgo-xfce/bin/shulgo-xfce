@@ -1,0 +1,16 @@
+#!/bin/sh
+# ShulGo in the Xfce tray.
+#
+# The package puts the Python under /usr/lib/shulgo-xfce rather than into site-packages, so it cannot
+# collide with another package and an interpreter upgrade does not strand it. This wrapper is the only
+# thing that has to know that.
+#
+# -s keeps a user's own ~/.local site-packages out of a tray process: this program imports nothing but
+# the standard library and its own files, and something shadowing "json" in a home directory has no
+# business getting into it. Deliberately NOT -E as well, tempting as it looks — -E ignores every
+# PYTHON* variable, PYTHONPATH among them, which would throw away the line directly above and leave
+# this working only on a machine where the package happened to be importable some other way.
+SHULGO_LIB="${SHULGO_LIB:-/usr/lib/shulgo-xfce}"
+PYTHONPATH="${SHULGO_LIB}"
+export PYTHONPATH
+exec python3 -s -m shulgo_xfce "$@"
