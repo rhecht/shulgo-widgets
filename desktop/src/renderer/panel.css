@@ -471,3 +471,146 @@ footer button:hover {
   line-height: 1.5;
   max-width: 28ch;
 }
+
+/* ---- looking somewhere else --------------------------------------------------------------- */
+
+/* The place is a button: travelling is exactly when opening a settings window to retype your city
+ * is one step too many. */
+.where {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 3px 7px;
+  margin-left: -7px;
+  border-radius: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.where:hover {
+  background: rgba(143, 179, 234, 0.14);
+}
+
+.search {
+  margin: 0 12px 8px;
+  padding: 7px;
+  border-radius: var(--radius);
+  background: var(--veil-raised);
+  border: 1px solid var(--veil-line);
+}
+
+.search-row {
+  display: flex;
+  gap: 6px;
+}
+
+.search-row input {
+  flex: 1;
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 9px;
+  color: var(--text);
+  background: rgba(11, 18, 32, 0.6);
+  border: 1px solid rgba(143, 179, 234, 0.25);
+  outline: none;
+}
+
+.search-row input:focus {
+  border-color: var(--accent);
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.search-results:empty {
+  margin-top: 0;
+}
+
+.search-hit {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  text-align: left;
+}
+
+.search-hit:hover {
+  background: var(--navy-2);
+}
+
+.search-label {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.search-count,
+.search-note {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.search-note {
+  padding: 7px 9px;
+  line-height: 1.4;
+}
+
+/* The clock noticed a journey. A question, not an assumption. */
+.moved {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  background: linear-gradient(to right, rgba(29, 75, 133, 0.55), var(--veil-raised) 70%);
+  border: 1px solid rgba(143, 179, 234, 0.35);
+}
+
+.moved-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.moved-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.moved-body {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.moved-change {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: rgba(143, 179, 234, 0.25);
+}
+
+.moved-change:hover {
+  background: var(--navy-2);
+}
+
+.moved-keep {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.moved-keep:hover {
+  background: rgba(143, 179, 234, 0.2);
+  color: #fff;
+}

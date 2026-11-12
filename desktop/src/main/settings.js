@@ -26,6 +26,7 @@ const DEFAULTS = {
     glass: 'tint',            // tint | frosted | solid
     mikvahFor: 'all',
     lastTab: 'minyanim',
+    seenTimezone: '',
     listLength: 8,
     openAtLogin: false,
 };
@@ -142,6 +143,8 @@ export class Settings {
      */
     asConfig() {
         const values = this._values;
+        // Captured, because inside the object below "this" is the object, not the Settings.
+        const save = (changes) => this.set(changes);
 
         return {
             get baseUrl() { return values.apiBaseUrl; },
@@ -152,13 +155,15 @@ export class Settings {
             get mikvahFor() { return values.mikvahFor === 'all' ? null : values.mikvahFor; },
             get listLength() { return values.listLength; },
             get place() { return values.place; },
+            get seenTimezone() { return values.seenTimezone; },
+            set seenTimezone(zone) { save({ seenTimezone: zone || '' }); },
             get point() {
                 if (!values.latitude && !values.longitude)
                     return null;
 
                 return { lat: values.latitude, lng: values.longitude, label: values.locationLabel || 'your location' };
             },
-            rememberPoint: ({ lat, lng, label }) => this.set({ latitude: lat, longitude: lng, locationLabel: label || '' }),
+            rememberPoint: ({ lat, lng, label }) => save({ latitude: lat, longitude: lng, locationLabel: label || '' }),
         };
     }
 }

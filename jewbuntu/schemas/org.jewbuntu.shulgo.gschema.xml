@@ -122,6 +122,15 @@
       <summary>Which mikvaos to list</summary>
     </key>
 
+    <key name="seen-timezone" type="s">
+      <default>''</default>
+      <summary>The time zone the place was set in</summary>
+      <description>
+        When the machine's time zone stops matching this, the laptop has probably travelled, and the
+        widget asks whether to look somewhere else. Not a setting anyone needs to touch.
+      </description>
+    </key>
+
     <key name="last-tab" type="s">
       <choices>
         <choice value="minyanim"/>

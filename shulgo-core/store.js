@@ -10,7 +10,7 @@
  * all have.
  */
 
-import { minutesUntil, nowUnix, todayIso, toUnix } from './format.js';
+import { minutesUntil, nowUnix, systemTimezone, todayIso, toUnix } from './format.js';
 
 /** When requests keep failing, wait longer each time rather than hammering a network that isn't there. */
 const BACKOFF_CAP = 900; // 15 minutes
@@ -65,7 +65,14 @@ export class Store {
             why: null,            // 'offline' | 'unreachable' | null
             zmanimForDate: null,  // the date the zmanim were worked out for
             nextTryAt: null,      // unix seconds: when we'll try again
+
+            // The clock says we're somewhere else than when the place was last set. A laptop changes
+            // its time zone when it travels, which is a free and dependable hint that "near Toronto"
+            // may no longer be what you want — and it needs no location service to notice.
+            movedTimezone: null,
         };
+
+        this._noteTimezone();
     }
 
     // ---- listeners ---------------------------------------------------------------------------
@@ -95,6 +102,7 @@ export class Store {
         this._running = true;
         this._tickTimer = setInterval(() => {
             this._dropPast();
+            this._noteTimezone();
             this._emit('tick');
         }, 30_000);
         this._scheduleRefresh();
@@ -261,6 +269,32 @@ export class Store {
             this.state.loading = false;
             this._emit('changed');
         }
+    }
+
+    /**
+     * Has the machine's time zone changed since the place was set? The first run just records where we
+     * are, so nobody is asked about a journey they didn't make.
+     */
+    _noteTimezone() {
+        const now = systemTimezone();
+        if (!now)
+            return;
+        const seen = this._config.seenTimezone;
+        if (!seen) {
+            this._config.seenTimezone = now;
+
+            return;
+        }
+        this.state.movedTimezone = now === seen ? null : now;
+    }
+
+    /** "Yes, I'm here now" or "no, leave it" — either way, stop asking about this journey. */
+    settleTimezone() {
+        const now = systemTimezone();
+        if (now)
+            this._config.seenTimezone = now;
+        this.state.movedTimezone = null;
+        this._emit('changed');
     }
 
     /** Minyanim that have already started drop off the list as the minutes pass. */

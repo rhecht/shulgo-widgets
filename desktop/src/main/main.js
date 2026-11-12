@@ -258,6 +258,7 @@ function viewState() {
         needsKey: s.needsKey,
         needsPlace: s.needsPlace,
         notice: F.offlineNotice(s, store.hasAnything),
+        moved: s.movedTimezone ? { zone: s.movedTimezone, place: F.placeFromTimezone(s.movedTimezone) } : null,
         zmanimOutOfDate: store.zmanimOutOfDate,
         zmanimForDate: s.zmanimForDate,
         today: s.today,
@@ -320,6 +321,7 @@ function registerIpc() {
     ipcMain.handle('shulgo:openSettings', () => openSettings());
     ipcMain.handle('shulgo:hidePanel', () => panel?.hide());
     ipcMain.handle('shulgo:network', (_event, online) => network.report(Boolean(online)));
+    ipcMain.handle('shulgo:settleTimezone', () => store.settleTimezone());
     ipcMain.handle('shulgo:quit', () => {
         quitting = true;
         app.quit();
@@ -346,6 +348,8 @@ function registerIpc() {
             longitude: match.lng,
             locationLabel: match.label,
         });
+        // Choosing a place answers the "have you travelled?" question too.
+        store.settleTimezone();
         api.forget();
         store.refresh({ fresh: true });
     });

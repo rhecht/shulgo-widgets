@@ -25,6 +25,11 @@ const PIN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6a4.4 4.4
 const CLOUD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 18.5a4.2 4.2 0 0 1-.5-8.37 5.6 5.6 0 0 1 10.6-1.48 3.9 3.9 0 0 1 3.2 3.85 3.9 3.9 0 0 1-3.9 4H7.2zm0-1.8h9.4a2.1 2.1 0 0 0 0-4.2h-.9v-.9a3.8 3.8 0 0 0-7.36-1.3l-.25.68-.72.07A2.4 2.4 0 0 0 7.2 16.7z"/><path d="M3.4 3.1a.9.9 0 0 0-1.27 1.27l17.5 17.5a.9.9 0 0 0 1.27-1.27L3.4 3.1z" opacity=".55"/></svg>';
 
 const el = {
+    where: document.getElementById('where'),
+    search: document.getElementById('search'),
+    searchInput: document.getElementById('search-input'),
+    searchClose: document.getElementById('search-close'),
+    searchResults: document.getElementById('search-results'),
     place: document.getElementById('place'),
     hebrew: document.getElementById('hebrew'),
     refresh: document.getElementById('refresh'),
@@ -59,6 +64,50 @@ function open(url) {
         return;
     window.shulgo.openExternal(url);
     window.shulgo.hidePanel();
+}
+
+// ---- looking somewhere else ----------------------------------------------------------------
+
+let searchTimer = null;
+
+function openSearch() {
+    el.search.hidden = false;
+    el.searchInput.value = '';
+    el.searchResults.replaceChildren();
+    el.searchInput.focus();
+}
+
+function closeSearch() {
+    clearTimeout(searchTimer);
+    el.search.hidden = true;
+    el.searchResults.replaceChildren();
+}
+
+async function runSearch() {
+    const typed = el.searchInput.value.trim();
+    el.searchResults.replaceChildren();
+    if (typed.length < 2)
+        return;
+
+    const matches = await window.shulgo.searchPlaces(typed);
+    if (!matches.length) {
+        el.searchResults.append(node('div', 'search-note',
+            `ShulGo doesn’t know “${typed}”. Try a city with its state or country, or a zip.`));
+
+        return;
+    }
+
+    for (const match of matches.slice(0, 6)) {
+        const hit = node('button', 'search-hit');
+        hit.append(node('span', 'search-label', match.label));
+        if (match.shuls)
+            hit.append(node('span', 'search-count', `${match.shuls} shul${match.shuls === 1 ? '' : 's'}`));
+        hit.addEventListener('click', () => {
+            window.shulgo.setPlace(match);
+            closeSearch();
+        });
+        el.searchResults.append(hit);
+    }
 }
 
 // ---- the tab strip -------------------------------------------------------------------------
@@ -202,6 +251,29 @@ function restingState(n) {
     return box;
 }
 
+/** "Your clock says you're in Chicago now — still looking near Toronto?" */
+function movedPrompt(moved) {
+    const box = node('div', 'moved');
+
+    const words = node('div', 'moved-words');
+    words.append(node('div', 'moved-title', `Your clock says you’re in ${moved.place} now`));
+    words.append(node('div', 'moved-body', state.place?.label
+        ? `Still looking near ${state.place.label}.`
+        : 'Where should ShulGo look?'));
+    box.append(words);
+
+    const change = node('button', 'moved-change', 'Look elsewhere');
+    change.addEventListener('click', () => openSearch());
+    box.append(change);
+
+    const keep = node('button', 'moved-keep', '✕');
+    keep.title = 'Stay here';
+    keep.addEventListener('click', () => window.shulgo.settleTimezone());
+    box.append(keep);
+
+    return box;
+}
+
 function notice({ title, body, actionLabel, onAction, error = false }) {
     const box = node('div', `notice${error ? ' error' : ''}`);
     box.append(node('h2', null, title));
@@ -269,6 +341,10 @@ function render() {
 
         return;
     }
+
+    // The clock says this machine has travelled. Ask; don't assume.
+    if (state.moved)
+        el.content.append(movedPrompt(state.moved));
 
     if (state.notice)
         el.content.append(offlineStrip(state.notice));
@@ -420,12 +496,26 @@ function moreButton(label, url) {
 // ---- wiring ----------------------------------------------------------------------------------
 
 buildTabs();
+el.where.addEventListener('click', () => (el.search.hidden ? openSearch() : closeSearch()));
+el.searchClose.addEventListener('click', () => closeSearch());
+for (const event of ['input', 'change', 'search']) {
+    el.searchInput.addEventListener(event, () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => runSearch(), 300);
+    });
+}
 el.refresh.addEventListener('click', () => window.shulgo.refresh());
 el.settings.addEventListener('click', () => window.shulgo.openSettings());
 el.openSite.addEventListener('click', () => open(`${state?.siteUrl ?? 'https://shulgo.com'}/next`));
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape')
+    if (event.key === 'Escape') {
+        if (!el.search.hidden) {
+            closeSearch();
+
+            return;
+        }
         window.shulgo.hidePanel();
+    }
     if (event.key === 'r' && (event.metaKey || event.ctrlKey))
         window.shulgo.refresh();
 });

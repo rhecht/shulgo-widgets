@@ -544,3 +544,121 @@
   color: #f2b705;
   margin-bottom: 6px;
 }
+
+/* ---- looking somewhere else --------------------------------------------------------------- */
+
+/* The place in the header is a button: travelling is exactly when opening a settings window to
+ * retype your city is one step too many. */
+.shulgo-place-button {
+  border-radius: 10px;
+  padding: 2px 6px;
+  color: inherit;
+}
+
+.shulgo-place-button:hover,
+.shulgo-place-button:focus {
+  background-color: rgba(143, 179, 234, 0.14);
+}
+
+.shulgo-search {
+  spacing: 4px;
+  margin: 0 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background-color: rgba(28, 39, 64, 0.85);
+  border: 1px solid rgba(143, 179, 234, 0.14);
+}
+
+.shulgo-search-row {
+  spacing: 6px;
+}
+
+.shulgo-search-entry {
+  border-radius: 9px;
+  padding: 5px 10px;
+  color: #f2f4f7;
+  background-color: rgba(11, 18, 32, 0.6);
+  border: 1px solid rgba(143, 179, 234, 0.25);
+}
+
+.shulgo-search-entry:focus {
+  border: 1px solid #8fb3ea;
+}
+
+.shulgo-search-results {
+  spacing: 2px;
+}
+
+.shulgo-search-button {
+  border-radius: 9px;
+  padding: 0;
+  color: inherit;
+}
+
+.shulgo-search-button:hover,
+.shulgo-search-button:focus {
+  background-color: rgba(29, 75, 133, 0.9);
+}
+
+.shulgo-search-hit {
+  spacing: 8px;
+  padding: 7px 9px;
+}
+
+.shulgo-search-label {
+  font-size: 0.92em;
+  color: #f2f4f7;
+}
+
+.shulgo-search-count {
+  font-size: 0.8em;
+  color: #a9b3c2;
+}
+
+.shulgo-search-note {
+  padding: 7px 9px;
+  font-size: 0.85em;
+  color: #a9b3c2;
+}
+
+/* The clock noticed a journey. A question, not an assumption. */
+.shulgo-moved {
+  spacing: 8px;
+  margin-bottom: 5px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background-gradient-direction: horizontal;
+  background-gradient-start: rgba(29, 75, 133, 0.55);
+  background-gradient-end: rgba(28, 39, 64, 0.72);
+  border: 1px solid rgba(143, 179, 234, 0.35);
+}
+
+.shulgo-moved-icon {
+  icon-size: 18px;
+  color: #8fb3ea;
+}
+
+.shulgo-moved-title {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.shulgo-moved-body {
+  font-size: 0.82em;
+  color: #c3cddc;
+}
+
+.shulgo-moved-change {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: rgba(143, 179, 234, 0.25);
+}
+
+.shulgo-moved-change:hover,
+.shulgo-moved-change:focus {
+  background-color: #1d4b85;
+}

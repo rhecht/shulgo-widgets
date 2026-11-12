@@ -280,6 +280,27 @@ export function escapeMarkup(text) {
         .replace(/'/g, '&apos;');
 }
 
+/**
+ * The machine's own time zone, as an IANA name like "America/Toronto". Works the same in GJS and in
+ * Node, which is why the travelling check lives in core rather than in each platform.
+ */
+export function systemTimezone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch {
+        return null;
+    }
+}
+
+/** "America/Argentina/Buenos_Aires" → "Buenos Aires". The city is the part worth saying out loud. */
+export function placeFromTimezone(zone) {
+    if (!zone)
+        return '';
+    const city = String(zone).split('/').pop();
+
+    return city.replace(/_/g, ' ');
+}
+
 /** "from 1:45 PM", or "from yesterday" once it's no longer today's. */
 export function takenAt(unix) {
     if (!unix)

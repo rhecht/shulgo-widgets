@@ -25,5 +25,6 @@ contextBridge.exposeInMainWorld('shulgo', {
 
     searchPlaces: (text) => ipcRenderer.invoke('shulgo:searchPlaces', text),
     setPlace: (match) => ipcRenderer.invoke('shulgo:setPlace', match),
+    settleTimezone: () => ipcRenderer.invoke('shulgo:settleTimezone'),
     setKey: (key, options) => ipcRenderer.invoke('shulgo:setKey', key, options),
 });

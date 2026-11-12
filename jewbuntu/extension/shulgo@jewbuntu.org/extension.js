@@ -7,6 +7,7 @@
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -139,7 +140,17 @@ class ShulGoIndicator extends PanelMenu.Button {
         this._dateLabel = new St.Label({ text: '', style_class: 'shulgo-hebrew-date' });
         titleBox.add_child(this._placeLabel);
         titleBox.add_child(this._dateLabel);
-        header.add_child(titleBox);
+
+        // The place is a button: travelling is the case where "open Settings, find the box, type"
+        // is one step too many, so looking somewhere else starts right here.
+        this._placeButton = new St.Button({
+            style_class: 'shulgo-place-button',
+            child: titleBox,
+            can_focus: true,
+            x_expand: true,
+        });
+        this._placeButton.connect('clicked', () => this._openSearch());
+        header.add_child(this._placeButton);
 
         this._spinner = new St.Label({ text: '', style_class: 'shulgo-spinner', y_align: Clutter.ActorAlign.CENTER });
         header.add_child(this._spinner);
@@ -149,6 +160,7 @@ class ShulGoIndicator extends PanelMenu.Button {
             this._extension.openPreferences();
         }));
         root.add_child(header);
+        root.add_child(this._buildSearch());
 
         // The tab strip.
         this._tabBar = new St.BoxLayout({ style_class: 'shulgo-tabs', x_expand: true });
@@ -199,6 +211,112 @@ class ShulGoIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(holder);
 
         this.applyGlass();
+    }
+
+    /** Type a city; ShulGo says what it could be; pick one. The path that works on any machine. */
+    _buildSearch() {
+        this._searchBox = new St.BoxLayout({ vertical: true, style_class: 'shulgo-search', x_expand: true, visible: false });
+
+        const row = new St.BoxLayout({ style_class: 'shulgo-search-row', x_expand: true });
+        this._searchEntry = new St.Entry({
+            style_class: 'shulgo-search-entry',
+            hint_text: 'A city, neighborhood or zip',
+            can_focus: true,
+            x_expand: true,
+        });
+        this._searchEntry.clutter_text.connect('text-changed', () => this._searchLater());
+        this._searchEntry.clutter_text.connect('key-press-event', (_t, event) => {
+            if (event.get_key_symbol() === Clutter.KEY_Escape) {
+                this._closeSearch();
+
+                return Clutter.EVENT_STOP;
+            }
+
+            return Clutter.EVENT_PROPAGATE;
+        });
+        row.add_child(this._searchEntry);
+        row.add_child(iconButton('window-close-symbolic', 'Close', () => this._closeSearch()));
+        this._searchBox.add_child(row);
+
+        this._searchResults = new St.BoxLayout({ vertical: true, style_class: 'shulgo-search-results', x_expand: true });
+        this._searchBox.add_child(this._searchResults);
+
+        return this._searchBox;
+    }
+
+    _openSearch() {
+        this._searchBox.visible = true;
+        this._searchEntry.set_text('');
+        this._searchResults.destroy_all_children();
+        global.stage.set_key_focus(this._searchEntry.clutter_text);
+    }
+
+    _closeSearch() {
+        if (this._searchTimer) {
+            GLib.Source.remove(this._searchTimer);
+            this._searchTimer = null;
+        }
+        this._searchBox.visible = false;
+        this._searchResults.destroy_all_children();
+    }
+
+    /** A breath after the last keystroke, so typing a city isn't a request per letter. */
+    _searchLater() {
+        if (this._searchTimer)
+            GLib.Source.remove(this._searchTimer);
+        this._searchTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
+            this._searchTimer = null;
+            this._searchNow().catch((e) => logError(e, 'ShulGo: place search failed'));
+
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    async _searchNow() {
+        const typed = this._searchEntry.get_text().trim();
+        this._searchResults.destroy_all_children();
+        if (typed.length < 2)
+            return;
+
+        const answer = await this._extension.api.places(typed);
+        if (!answer.ok) {
+            this._searchResults.add_child(new St.Label({ text: answer.message, style_class: 'shulgo-search-note' }));
+
+            return;
+        }
+        if (!answer.data.length) {
+            this._searchResults.add_child(new St.Label({
+                text: `ShulGo doesn’t know “${typed}”. Try a city with its state or country, or a zip.`,
+                style_class: 'shulgo-search-note',
+            }));
+
+            return;
+        }
+
+        for (const match of answer.data.slice(0, 6)) {
+            const line = new St.BoxLayout({ style_class: 'shulgo-search-hit', x_expand: true });
+            line.add_child(new St.Label({ text: match.label, style_class: 'shulgo-search-label', x_expand: true }));
+            if (match.shuls) {
+                line.add_child(new St.Label({
+                    text: `${match.shuls} shul${match.shuls === 1 ? '' : 's'}`,
+                    style_class: 'shulgo-search-count',
+                }));
+            }
+            const button = new St.Button({ style_class: 'shulgo-search-button', child: line, can_focus: true, x_expand: true });
+            button.connect('clicked', () => this._usePlace(match));
+            this._searchResults.add_child(button);
+        }
+    }
+
+    _usePlace(match) {
+        const settings = this._config.settings;
+        settings.set_boolean('use-geolocation', false);
+        settings.set_string('place', match.label);
+        this._config.rememberPoint({ lat: match.lat, lng: match.lng, label: match.label });
+        this._store.settleTimezone();
+        this._closeSearch();
+        this._extension.api.forget();
+        this._store.refresh({ fresh: true });
     }
 
     /**
@@ -355,6 +473,11 @@ class ShulGoIndicator extends PanelMenu.Button {
 
             return;
         }
+
+        // The clock says the laptop has travelled. Ask rather than assume — the place may well still
+        // be the one wanted, and guessing wrong is worse than a question.
+        if (state.movedTimezone)
+            this._content.add_child(this._movedPrompt(state.movedTimezone));
 
         // Showing something old is better than showing nothing, as long as it says so.
         const notice = F.offlineNotice(state, this._store.hasAnything);
@@ -614,6 +737,33 @@ class ShulGoIndicator extends PanelMenu.Button {
             button.connect('clicked', onAction);
             box.add_child(button);
         }
+
+        return box;
+    }
+
+    /** "Your clock says you're in Chicago now — still looking near Toronto?" */
+    _movedPrompt(zone) {
+        const box = new St.BoxLayout({ style_class: 'shulgo-moved', x_expand: true });
+        box.add_child(new St.Icon({ icon_name: 'find-location-symbolic', style_class: 'shulgo-moved-icon' }));
+
+        const words = new St.BoxLayout({ vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER });
+        words.add_child(new St.Label({
+            text: `Your clock says you’re in ${F.placeFromTimezone(zone)} now`,
+            style_class: 'shulgo-moved-title',
+        }));
+        const here = this._store.state.place?.label;
+        words.add_child(new St.Label({
+            text: here ? `Still looking near ${here}.` : 'Where should ShulGo look?',
+            style_class: 'shulgo-moved-body',
+        }));
+        box.add_child(words);
+
+        const change = new St.Button({ label: 'Look elsewhere', style_class: 'shulgo-moved-change', can_focus: true });
+        change.connect('clicked', () => this._openSearch());
+        box.add_child(change);
+
+        const keep = iconButton('window-close-symbolic', 'Stay here', () => this._store.settleTimezone());
+        box.add_child(keep);
 
         return box;
     }
