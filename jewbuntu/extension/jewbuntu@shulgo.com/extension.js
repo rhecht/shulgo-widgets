@@ -494,8 +494,7 @@ class ShulGoIndicator extends PanelMenu.Button {
         if (state.needsKey) {
             this._content.add_child(this._notice(
                 'Add your ShulGo API key',
-                'Ask ShulGo for one at shulgo.com/developers/request — they email you a link that '
-                + 'shows your key. Settings has the button, and the box to paste it into.',
+                'Ask your ShulGo administrator for one. Settings has the box to paste it into.',
                 'Open Settings', () => {
                     this.menu.close();
                     this._extension.openPreferences();

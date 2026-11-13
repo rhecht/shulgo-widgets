@@ -461,8 +461,8 @@ class ShulGoWindow extends Adw.ApplicationWindow {
             this._status(box, {
                 icon: 'dialog-password-symbolic',
                 title: 'Add your ShulGo API key',
-                description: 'Ask ShulGo for one at shulgo.com/developers/request — they email you a '
-                    + 'link that shows your key. Settings has the button, and the box to paste it into.',
+                description: 'Ask your ShulGo administrator for one. Settings has the box to paste '
+                    + 'it into.',
                 actionLabel: 'Open Settings',
                 onAction: () => this.application.activate_action('preferences', null),
             });

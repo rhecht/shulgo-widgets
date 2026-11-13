@@ -125,8 +125,7 @@ def save_api_key(key):
 
     _write_private(path, '\n'.join([
         '# ShulGo API key for the JewBuntu widget.',
-        '# Ask your ShulGo administrator for a key, or request one at',
-        '# https://shulgo.com/developers/request',
+        '# Ask your ShulGo administrator for a key.',
         'api-key=%s' % clean,
         '',
     ]))

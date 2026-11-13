@@ -53,9 +53,8 @@ Needs GNOME Shell 45–49 (Ubuntu 24.04 and later), `gjs` and `libglib2.0-bin`.
 
 Everything the widget shows comes from ShulGo's API, which wants a key on every request.
 
-1. Get a key: ask your ShulGo administrator, or request one at
-   [shulgo.com/developers/request](https://shulgo.com/developers/request). (If you *are* the
-   administrator, it is **Admin › System › API & apps**.)
+1. Get a key: ask your ShulGo administrator. (If you *are* the administrator, it is
+   **Admin › System › API & apps**.)
    - **ShulGo's own app** is the kind to pick if mikvaos should show: mikvah.org's terms restrict those
      listings to ShulGo's own apps. With any other kind the API answers `403` for mikvaos and the widget
      quietly drops that tab — everything else still works.

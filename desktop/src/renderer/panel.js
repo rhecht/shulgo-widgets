@@ -322,8 +322,7 @@ function render() {
     if (state.needsKey) {
         el.content.append(notice({
             title: 'Add your ShulGo API key',
-            body: 'Ask ShulGo for one at shulgo.com/developers/request — they email you a link that '
-                + 'shows your key. Settings has the button, and the box to paste it into.',
+            body: 'Ask your ShulGo administrator for one. Settings has the box to paste it into.',
             actionLabel: 'Open Settings',
             onAction: () => window.shulgo.openSettings(),
         }));

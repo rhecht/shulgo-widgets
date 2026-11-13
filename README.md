@@ -67,9 +67,8 @@ Copy `wordpress/shulgo-minyanim` into `wp-content/plugins`, switch it on, then p
 
 ## You need a ShulGo API key
 
-Every piece here talks to `https://shulgo.com/api/v1`, which wants a key. Ask for one at
-[shulgo.com/developers/request](https://shulgo.com/developers/request), then paste it into the
-widget's own settings window.
+Every piece here talks to `https://shulgo.com/api/v1`, which wants a key. Ask your ShulGo
+administrator for one, then paste it into the widget's own settings window.
 
 The key is never kept in GSettings or dconf, and never reaches a renderer process. It lives in a file
 only you can read — `~/.config/jewbuntu/shulgo.conf` on Linux, `shulgo.conf` in the app's data

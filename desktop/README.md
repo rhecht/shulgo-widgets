@@ -38,9 +38,8 @@ Then open Settings from the panel's gear, paste a ShulGo API key, and set a plac
 
 ## The API key
 
-1. Get a key: ask your ShulGo administrator, or request one at
-   [shulgo.com/developers/request](https://shulgo.com/developers/request). (If you *are* the
-   administrator, it is **Admin › System › API & apps**.)
+1. Get a key: ask your ShulGo administrator. (If you *are* the administrator, it is
+   **Admin › System › API & apps**.)
    - Pick **ShulGo's own app** if mikvaos should show — mikvah.org's terms keep those listings to
      ShulGo's own apps. With any other kind the API answers `403` for mikvaos and the Mikvaos tab
      quietly disappears; everything else still works.

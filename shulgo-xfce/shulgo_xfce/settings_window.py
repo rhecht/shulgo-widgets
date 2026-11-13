@@ -71,8 +71,7 @@ class SettingsWindow(Gtk.Window):
         # NOT "Admin › System › API & apps": that is where an administrator makes a key, and an
         # ordinary person running this widget cannot reach it. Telling them to go somewhere they
         # have no access to is worse than saying nothing.
-        grid.attach(self._note('Ask your ShulGo administrator for a key, or request one at '
-                               'shulgo.com/developers/request. It is kept in '
+        grid.attach(self._note('Ask your ShulGo administrator for a key. It is kept in '
                                '~/.config/jewbuntu/shulgo.conf, readable only by you — never in '
                                'dconf.'), 0, row, 2, 1)
         row += 1
