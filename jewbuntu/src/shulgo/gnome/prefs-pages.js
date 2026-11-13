@@ -253,9 +253,11 @@ export function barPage(settings) {
         title: 'Glass',
         subtitle: 'The menu is ShulGo navy either way; this is how much of the desktop shows through it.',
         settings, key: 'glass',
+        // 'blur' is deliberately not offered any more: a Shell effect ignores border-radius, so it
+        // drew a square blurred panel behind the rounded card. The value still works if somebody has
+        // it saved — it renders see-through — it is just not something to choose afresh.
         choices: [
             { label: 'See-through', value: 'tint' },
-            { label: 'Frosted — blurs the desktop behind it', value: 'blur' },
             { label: 'Solid navy', value: 'solid' },
         ],
     }));

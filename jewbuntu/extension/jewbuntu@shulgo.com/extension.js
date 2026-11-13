@@ -9,7 +9,6 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -390,7 +389,10 @@ class ShulGoIndicator extends PanelMenu.Button {
         // carries the surface.
         const surface = {
             tint: 'background-color: rgba(11, 18, 32, 0.78); border: 1px solid rgba(143, 179, 234, 0.2);',
-            blur: 'background-color: rgba(11, 18, 32, 0.62); border: 1px solid rgba(143, 179, 234, 0.2);',
+            // 'blur' is still a legal setting — somebody may have it saved — but it now draws the
+            // see-through surface. See the note below applyGlass's styles for why the blur itself is
+            // gone.
+            blur: 'background-color: rgba(11, 18, 32, 0.78); border: 1px solid rgba(143, 179, 234, 0.2);',
             solid: 'background-color: #0b1220; border: 1px solid #26324a;',
         }[wanted] ?? '';
 
@@ -403,25 +405,19 @@ class ShulGoIndicator extends PanelMenu.Button {
         // square halo around the rounded panel. The navy carries its own edge well enough without it.
         this._rootBox.set_style(`${surface} border-radius: 16px; padding: 10px 8px 6px 8px;`);
 
-        if (this._blur) {
-            this.menu.box.remove_effect(this._blur);
-            this._blur = null;
-        }
-        if (wanted !== 'blur')
-            return;
-
-        try {
-            this._blur = new Shell.BlurEffect({
-                brightness: 0.72,
-                sigma: 28,
-                mode: Shell.BlurMode.BACKGROUND,
-            });
-            this.menu.box.add_effect(this._blur);
-        } catch (e) {
-            // Older or stricter Shells don't offer a background blur; the tint alone still looks right.
-            this._blur = null;
-            logError(e, 'ShulGo: this GNOME Shell can’t blur behind the menu');
-        }
+        // There used to be a Shell.BlurEffect here for glass='blur', and it had the very fault the
+        // comment above warns about. An effect is drawn over the actor's rectangle and knows nothing
+        // about border-radius, so the blurred panel came out square behind a card rounded to 16px:
+        // four grey corners sticking out past the navy. Reported from the arm64 dev VM.
+        //
+        // Doing it properly means a shader that blurs AND rounds — which is what Blur my Shell
+        // maintains a whole project to do. Worse, it would have to be written twice: Shell.GLSLEffect
+        // on GNOME 45-50 and Clutter.ShaderEffect's static snippet on 51, which removed the former.
+        // That is two code paths on the exact API that just broke this extension on 51, for a
+        // cosmetic option that was never the default. Not worth it.
+        //
+        // So the blur is gone and 'blur' renders as the see-through surface. The setting stays legal
+        // so nobody's saved choice becomes invalid, and it is no longer offered in preferences.
     }
 
     // ---- drawing ----------------------------------------------------------------------------
@@ -868,10 +864,6 @@ class ShulGoIndicator extends PanelMenu.Button {
 
     destroy() {
         this._unsubscribe?.();
-        if (this._blur) {
-            this.menu.box.remove_effect(this._blur);
-            this._blur = null;
-        }
         super.destroy();
     }
 });

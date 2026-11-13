@@ -106,8 +106,11 @@
       <default>'tint'</default>
       <summary>How see-through the widget is</summary>
       <description>
-        blur: frosted glass, with the desktop blurred behind it. tint: see-through, no blur.
-        solid: ShulGo navy, nothing showing through.
+        tint: see-through. solid: ShulGo navy, nothing showing through.
+
+        blur is retired and no longer offered: it drew a square blurred panel behind a card with
+        rounded corners, because a Shell effect ignores border-radius. The value is still accepted,
+        so a saved setting stays valid, and it renders the same as tint.
       </description>
     </key>
 
