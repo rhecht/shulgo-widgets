@@ -40,6 +40,8 @@ DEFAULTS = {
     'list-length': '5',        # how many minyanim in the menu
     'refresh-seconds': '900',  # 15 minutes. Gentle on purpose; countdowns tick locally.
     'show-zmanim': 'yes',
+    'show-events': 'yes',
+    'show-shiurim': 'yes',
 }
 
 

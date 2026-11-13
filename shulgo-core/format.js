@@ -175,6 +175,44 @@ export function minyanNote(item) {
     return bits.join(' · ');
 }
 
+/**
+ * "Women" or "Men" when a shiur is for one of them, and nothing at all when it's for everyone.
+ *
+ * The same rule shulgo.com's own shiurim page uses: it prints the word only for 'women' and 'men',
+ * because "Everyone" on every second row is noise rather than information.
+ */
+export function audienceLabel(code) {
+    return code === 'women' ? 'Women' : (code === 'men' ? 'Men' : '');
+}
+
+/**
+ * The line under a shiur's name: who gives it, where it is, who it's for.
+ *
+ * The time is not in here. Unlike a minyan, a shiur's `when` arrives already written out by the
+ * server ("Mondays, 8:00 PM"), because it is a weekday pattern rather than a moment, and nothing on
+ * this side would improve it.
+ */
+export function shiurSubtitle(item) {
+    const bits = [];
+    if (item?.maggid)
+        bits.push(item.maggid);
+
+    const shul = item?.shul;
+    if (shul?.name)
+        bits.push([shul.name, shul.city].filter((x) => x).join(', '));
+    else if (item?.place)
+        bits.push(item.place);
+
+    if (item?.online)
+        bits.push('Online');
+
+    const who = audienceLabel(item?.audience);
+    if (who)
+        bits.push(who);
+
+    return bits.join(' · ');
+}
+
 /** Where to send a map app for this minyan. */
 export function minyanDestination(item) {
     if (item.kind === 'live')

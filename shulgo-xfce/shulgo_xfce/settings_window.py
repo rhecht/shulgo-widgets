@@ -101,8 +101,19 @@ class SettingsWindow(Gtk.Window):
         grid.attach(self.zmanim_check, 0, row, 2, 1)
         row += 1
 
+        self.events_check = Gtk.CheckButton(label='Upcoming events near you')
+        self.events_check.set_active(self.values.get('show-events') == 'yes')
+        grid.attach(self.events_check, 0, row, 2, 1)
+        row += 1
+
+        self.shiurim_check = Gtk.CheckButton(label='Shiurim near you')
+        self.shiurim_check.set_active(self.values.get('show-shiurim') == 'yes')
+        grid.attach(self.shiurim_check, 0, row, 2, 1)
+        row += 1
+
         grid.attach(self._note('Countdowns are worked out on this machine, so ShulGo is only asked '
-                               'on the timer above.'), 0, row, 2, 1)
+                               'on the timer above. Each list you switch off is one request fewer '
+                               'each time it does.'), 0, row, 2, 1)
         row += 1
 
         buttons = Gtk.Box(spacing=8)
@@ -234,6 +245,8 @@ class SettingsWindow(Gtk.Window):
         self.values['travel-mode'] = self.mode_box.get_active_id() or 'drive'
         self.values['tefillah'] = self.tefillah_box.get_active_id() or 'next'
         self.values['show-zmanim'] = 'yes' if self.zmanim_check.get_active() else 'no'
+        self.values['show-events'] = 'yes' if self.events_check.get_active() else 'no'
+        self.values['show-shiurim'] = 'yes' if self.shiurim_check.get_active() else 'no'
 
         config.save_settings(self.values)
         config.save_api_key(self.key_entry.get_text())

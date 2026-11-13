@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from shulgo_xfce.pick import headline, still_ahead  # noqa: E402
+from shulgo_xfce.pick import headline, rows, still_ahead  # noqa: E402
 
 NOW = 1794509100            # 2026-11-12 13:45:00 -0500
 
@@ -93,6 +93,39 @@ class WhichOneThePanelNames(unittest.TestCase):
     def test_nothing_to_name(self):
         self.assertIsNone(headline([]))
         self.assertIsNone(headline(None))
+
+
+class WhatComesOutOfAnAnswer(unittest.TestCase):
+    """rows(): the v1 endpoints disagree about shape, and a menu must not crash over it."""
+
+    def test_next_answers_a_bare_array(self):
+        self.assertEqual(rows({'ok': True, 'data': [{'id': 1}]}), [{'id': 1}])
+
+    def test_events_and_shiurim_answer_an_object(self):
+        answer = {'ok': True, 'data': {'total': 9, 'page': 1, 'events': [{'id': 2}]}}
+        self.assertEqual(rows(answer, 'events'), [{'id': 2}])
+        answer = {'ok': True, 'data': {'total': 3, 'shiurim': [{'id': 3}], 'categories': []}}
+        self.assertEqual(rows(answer, 'shiurim'), [{'id': 3}])
+
+    def test_a_failed_answer_yields_nothing(self):
+        self.assertEqual(rows({'ok': False, 'code': 'no_key'}), [])
+        self.assertEqual(rows({'ok': False, 'data': {'events': [{'id': 1}]}}, 'events'), [])
+
+    def test_the_wrong_shape_yields_nothing_rather_than_raising(self):
+        self.assertEqual(rows({'ok': True, 'data': None}), [])
+        self.assertEqual(rows({'ok': True, 'data': {'events': 'not a list'}}, 'events'), [])
+        self.assertEqual(rows({'ok': True, 'data': []}, 'events'), [])
+        self.assertEqual(rows({'ok': True, 'data': {'other': []}}, 'events'), [])
+        self.assertEqual(rows({'ok': True}), [])
+        self.assertEqual(rows(None), [])
+        self.assertEqual(rows('nonsense'), [])
+
+    def test_asking_for_a_bare_array_with_a_key_is_not_a_crash(self):
+        """A mix-up between the two shapes should show an empty menu, not take the tray down."""
+        self.assertEqual(rows({'ok': True, 'data': [{'id': 1}]}, 'events'), [])
+
+    def test_an_empty_list_is_an_answer(self):
+        self.assertEqual(rows({'ok': True, 'data': {'events': []}}, 'events'), [])
 
 
 if __name__ == '__main__':

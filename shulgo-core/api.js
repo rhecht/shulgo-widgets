@@ -18,6 +18,7 @@ const TTL = {
     calendar: 43200,
     places: 300,
     shuls: 300,
+    shiurim: 600,
 };
 
 /** What we tell the caller when something went wrong and the server didn't say. */
@@ -129,6 +130,27 @@ export class ShulGoApi {
             q.month = month;
 
         return this._get('calendar', q);
+    }
+
+    /**
+     * Shiurim near a point, or matching a word.
+     *
+     * The server only treats it as "near here" when no search word is given — a typed search is
+     * meant to reach the whole directory, not just your neighbourhood — so lat/lng and q are passed
+     * as they come and the decision is left where it belongs.
+     */
+    shiurim({ lat, lng, q = '', category = '', page = 1 } = {}) {
+        const query = { page };
+        if (q)
+            query.q = q;
+        if (category)
+            query.category = category;
+        if (!q && lat !== undefined && lat !== null) {
+            query.lat = lat;
+            query.lng = lng;
+        }
+
+        return this._get('shiurim', query);
     }
 
     /** Cities, neighborhoods and zip codes, for the place box. */

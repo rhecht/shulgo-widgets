@@ -1,6 +1,7 @@
 {
   "generatedFrom": "shulgo-core/format.js",
   "tz": "America/Toronto",
+  "locale": "en-US",
   "node": "v22.23.3",
   "results": [
     "Minyan",
@@ -221,6 +222,34 @@
         "isNext": false,
         "past": false
       }
-    ]
+    ],
+    "Women",
+    "Men",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Rabbi Cohen",
+    "Rabbi Cohen · Khal Chasidim, Thornhill · Men",
+    "Rabbi Levy · The community centre · Online · Women",
+    "Young Israel",
+    "Young Israel",
+    "Someone's house",
+    "Rabbi Stern · Shomrei, Toronto",
+    "Today",
+    "Tomorrow",
+    "Sun, Nov 15",
+    "Tue, Nov 17",
+    "Fri, Dec 25",
+    "Tue, May 11",
+    "Jun 1, 2027",
+    "Thu, Nov 12",
+    "Apr 27, 2026",
+    "",
+    "",
+    "nonsense",
+    "Sun, Feb 14"
   ]
 }

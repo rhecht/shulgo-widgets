@@ -26,9 +26,9 @@ network touched every fifteen minutes by default.
 
 **The logic is tested. The window is not.**
 
-61 tests pass, covering the wording, the API client, the offline failsafe, the key and settings files,
-and the two rules that decide what you see. Of those, 138 individual wording cases are checked
-*against the JavaScript* — see below.
+69 tests pass, covering the wording, the API client, the offline failsafe, the key and settings files,
+and the rules that decide what you see. Of those, 166 individual wording cases are checked *against
+the JavaScript* — see below.
 
 But `tray.py` and `settings_window.py` have never been executed. There is no PyGObject on the machine
 this was written on, so not one line of the GTK code has run, and no tray icon has ever appeared. A
@@ -68,8 +68,11 @@ Then click the icon › Settings, paste a ShulGo API key, and search for where y
 app and the Mac and Windows tray all read. Python cannot import a JavaScript module, so `fmt.py` is a
 hand port of it — and a copy nobody checks is a copy that drifts.
 
-So `tests/cases.json` holds 138 inputs, `tests/make-expected.mjs` runs **the real format.js** under
-node over them, and `tests/test_fmt.py` insists the Python answers identically.
+So `tests/cases.json` holds 166 inputs, `tests/make-expected.mjs` runs **the real format.js** under
+node over them, and `tests/test_fmt.py` insists the Python answers identically. A date case is
+written as `{"__daysFromToday": 4}` and resolved by both runners at run time, so "Tue, Nov 17" does
+not quietly become "Nov 17, 2026" six months after the fixture was generated and start failing for a
+reason that has nothing to do with the Python.
 
 ```sh
 cd tests && TZ=America/Toronto node make-expected.mjs     # only when format.js changes
@@ -83,9 +86,12 @@ reported two different ways. Both were fixed in `format.js`, which means the GNO
 the fix too.
 
 Two things are deliberately not compared to the JavaScript, and `fmt.py` says so where it happens:
-anything that reads the real clock (tested here against a frozen one), and the clock *format* — JS
-asks `Intl` for the locale's own and Python has no `Intl`, so a 24-hour locale shows `13:45` there and
-`1:45 PM` here, in a line that says how old the data is.
+anything that reads the real clock (tested here against a frozen one), and anything whose shape comes
+from `Intl`, which Python has no equivalent of. A 24-hour locale shows `13:45` in GJS and `1:45 PM`
+here, and an en-GB desktop shows `Tue 17 Nov` against this port's `Tue, Nov 17`. `expected.json`
+records the locale it was generated under and the comparison skips itself outside `en-US`, so the
+difference is never quietly papered over. `Today` and `Tomorrow` — the two that carry most of the
+meaning — are identical everywhere.
 
 ## Where your things are kept
 
@@ -130,9 +136,30 @@ Two things block it going anywhere:
 2. **ShulGo has no licence yet**, and Arch requires a custom licence be shipped under
    `/usr/share/licenses/`. Until somebody chooses one, this cannot go to the AUR.
 
+## What's in the menu
+
+The next minyanim near your saved place, with countdowns worked out on this machine. Then three
+submenus, each of which can be switched off in Settings:
+
+- **Today's zmanim**, with the next one ahead picked out.
+- **Upcoming events** near you — worded exactly as the GNOME and Mac widgets word them, down to the
+  "Today" / "Tomorrow" / "Tue, Nov 17" on the date.
+- **Shiurim nearby**, with who gives each one and where. A shiur's time arrives already written out
+  by the server ("Mondays, 8:00 PM") because it is a weekday pattern rather than a moment, so there
+  is no countdown and nothing to tick.
+
+Each list you leave switched on is one more request each time the widget refreshes — which the
+settings window says in as many words. They are cheap ones: the minyan list is good for a minute, the
+other three for ten minutes to six hours, so most refreshes answer them from memory without touching
+the network. The submenus are rebuilt only when new data arrives, never on the one-minute countdown
+tick, which would otherwise throw away and remake three menus a minute for numbers that did not
+change.
+
 ## What it does not do
 
 No mikvaos: that data is mikvah.org's and their terms limit it to ShulGo's own first-party keys. No
-events or Hebrew calendar — the endpoints exist and the port left them out to stay small. No GeoClue
-by default; you pick a place once, because on a laptop with no usable WiFi scanning a location fix
-mostly fails, and a widget that asks and fails is worse than one that asks once.
+Hebrew calendar — the endpoint exists and the port left it out to stay small. No search box: shiurim
+and events are "near your saved place", because a tray menu has nowhere to type and the server only
+treats a request as "near here" when no search word is given. No GeoClue by default; you pick a place
+once, because on a laptop with no usable WiFi scanning a location fix mostly fails, and a widget that
+asks and fails is worse than one that asks once.

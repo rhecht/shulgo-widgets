@@ -53,3 +53,28 @@ def headline(rows):
             return row
 
     return rows[0] if rows else None
+
+
+def rows(answer, key=None):
+    """The list of things inside an API answer, whatever shape that answer happens to be.
+
+    The v1 endpoints are not consistent and there is no point pretending otherwise: /next answers a
+    bare array, while /events and /shiurim answer an object with the list under a name beside the
+    total and the page. Checked against the controllers rather than guessed at.
+
+    Anything unexpected — an error answer, a null, an object where a list belongs — comes back as an
+    empty list. A tray menu with nothing in it is a fair description of "we have nothing"; a crash
+    while drawing a menu is not.
+    """
+    if not isinstance(answer, dict) or not answer.get('ok'):
+        return []
+
+    data = answer.get('data')
+    if key is None:
+        return data if isinstance(data, list) else []
+
+    if not isinstance(data, dict):
+        return []
+    found = data.get(key)
+
+    return found if isinstance(found, list) else []

@@ -201,6 +201,25 @@ class WhenThingsGoWrong(unittest.TestCase):
             client.next(43.7, -79.4)
         self.assertEqual(len(fake.calls), 1, 'the 60-second TTL should have answered the second')
 
+    def test_events_and_shiurim_ask_the_right_urls(self):
+        fake = FakeHttp((200, {'data': {'events': []}}))
+        with Swap(fake):
+            api = self._api()
+            api.events(43.7064, -79.4286)
+            api.shiurim(43.7064, -79.4286)
+        urls = [c[0] for c in fake.calls]
+        self.assertEqual(urls[0], 'https://shulgo.com/api/v1/events?lat=43.7064&lng=-79.4286&page=1')
+        # No `q`, deliberately: the server only treats a shiurim request as "near here" when no
+        # search word is given, and a tray menu has nowhere to type one.
+        self.assertEqual(urls[1], 'https://shulgo.com/api/v1/shiurim?lat=43.7064&lng=-79.4286&page=1')
+
+    def test_a_shiurim_answer_is_cached_for_longer_than_a_minyan_list(self):
+        """Ten minutes against one: a weekly shiur does not change while you look at it."""
+        self.assertEqual(api_mod.TTL['shiurim'], 600)
+        self.assertEqual(api_mod.TTL['events'], 600)
+        self.assertEqual(api_mod.TTL['next'], 60)
+        self.assertEqual(api_mod.OFFLINE_TTL['shiurim'], 604800)
+
     def test_a_short_place_query_asks_nobody(self):
         fake = FakeHttp((200, {'data': []}))
         with Swap(fake):

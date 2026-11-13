@@ -17,7 +17,26 @@ import * as fmt from '../../shulgo-core/format.js';
 const spec = JSON.parse(readFileSync('cases.json', 'utf8'));
 const out = [];
 
-for (const [name, args] of spec.cases) {
+/**
+ * {"__daysFromToday": n} becomes a Y-M-D date, resolved at run time by both runners.
+ *
+ * Without this, a date written into cases.json would be "Tue, Nov 17" when expected.json was
+ * generated and "Nov 17, 2026" six months later, and the Python test would start failing for a
+ * reason that has nothing to do with the Python.
+ */
+const resolve = (arg) => {
+    if (arg && typeof arg === 'object' && '__daysFromToday' in arg) {
+        const when = new Date();
+        when.setDate(when.getDate() + arg.__daysFromToday);
+
+        return fmt.todayIso(when);
+    }
+
+    return arg;
+};
+
+for (const [name, rawArgs] of spec.cases) {
+    const args = rawArgs.map(resolve);
     const fn = fmt[name];
     if (typeof fn !== 'function')
         throw new Error(`format.js has no export named ${name} — cases.json is out of date`);
@@ -29,6 +48,10 @@ for (const [name, args] of spec.cases) {
 writeFileSync('expected.json', `${JSON.stringify({
     generatedFrom: 'shulgo-core/format.js',
     tz: process.env.TZ ?? null,
+    // Recorded because eventDate and takenAt ask Intl for the locale's own forms. The Python has no
+    // Intl and writes the en-US ones, so the comparison is only meaningful under en-US — the test
+    // skips itself rather than failing for a reason that is nobody's fault.
+    locale: Intl.DateTimeFormat().resolvedOptions().locale,
     node: process.version,
     results: out,
 }, null, 2)}\n`);

@@ -21,6 +21,7 @@ const OFFLINE_TTL = {
     calendar: 2592000,    // a month
     places: 2592000,      // a month
     shuls: 604800,
+    shiurim: 604800,    // a week; a weekly shiur is still on next week
 };
 
 /** Enough room for a few places' worth of every list, and no more. */

@@ -50,7 +50,23 @@ BY_NAME = {
     'updatedAgo': fmt.updated_ago,
     'offlineNotice': fmt.offline_notice,
     'zmanimList': fmt.zmanim_list,
+    'eventDate': fmt.event_date,
+    'audienceLabel': fmt.audience_label,
+    'shiurSubtitle': fmt.shiur_subtitle,
 }
+
+
+def resolve(arg):
+    """{"__daysFromToday": n} becomes a Y-M-D date, exactly as make-expected.mjs resolves it.
+
+    A literal date in cases.json would read "Tue, Nov 17" the day expected.json was generated and
+    "Nov 17, 2026" six months later, and this test would start failing for a reason that has nothing
+    to do with the Python.
+    """
+    if isinstance(arg, dict) and '__daysFromToday' in arg:
+        return fmt.today_iso(time.time() + arg['__daysFromToday'] * 86400)
+
+    return arg
 
 
 class SameWordsAsTheJavaScript(unittest.TestCase):
@@ -79,11 +95,20 @@ class SameWordsAsTheJavaScript(unittest.TestCase):
                 % self.expected['tz']
             )
 
+        # eventDate and takenAt ask Intl for the locale's own forms; fmt.py writes the en-US ones.
+        # Comparing them under another locale would fail for a reason that is nobody's fault, and
+        # fmt.py says so where it happens.
+        if self.expected.get('locale') and not str(self.expected['locale']).startswith('en-US'):
+            self.skipTest(
+                'expected.json was generated under locale %s; the date wording can only be compared '
+                'under en-US' % self.expected['locale']
+            )
+
         wrong = []
         for i, ((name, args), want) in enumerate(zip(cases, results)):
             fn = BY_NAME.get(name)
             self.assertIsNotNone(fn, 'test_fmt.py has no Python function mapped for %r' % name)
-            got = fn(*args)
+            got = fn(*[resolve(a) for a in args])
             # Round-trip through JSON so a tuple/list or int/float difference isn't called a
             # disagreement about wording, which is what this test is actually about.
             if json.loads(json.dumps(got)) != want:

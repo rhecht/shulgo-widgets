@@ -194,6 +194,96 @@ def today_iso(when=None):
     return '%04d-%02d-%02d' % (t.tm_year, t.tm_mon, t.tm_mday)
 
 
+_WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
+_MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+
+
+def _date_only(iso_date):
+    """Midday local time for a Y-M-D string, as a unix time, or None.
+
+    Midday rather than midnight on purpose, matching format.js: it leaves half a day of slack either
+    side, so a daylight-saving change cannot push a date onto the day before.
+    """
+    parts = str(iso_date or '').split('-')
+    if len(parts) < 3:
+        return None
+    try:
+        year, month, day = (int(p) for p in parts[:3])
+    except (TypeError, ValueError):
+        return None
+    if not (year and month and day):
+        return None
+    try:
+        return time.mktime((year, month, day, 12, 0, 0, 0, 0, -1))
+    except (OverflowError, ValueError):
+        return None
+
+
+def event_date(iso_date):
+    """"Tue, Nov 17" for an event's date, and "Today" / "Tomorrow" when it's close.
+
+    The second place the port cannot be exact, and the bigger of the two. format.js asks Intl for the
+    locale's own short date, so an en-GB desktop sees "Tue 17 Nov" and a Hebrew one something else
+    again, while this always writes the en-US form. "Today" and "Tomorrow" — the two that carry most
+    of the meaning — are identical everywhere, and tests/test_fmt.py skips the comparison unless node
+    is running under en-US so the difference is never quietly papered over.
+    """
+    when = _date_only(iso_date)
+    if when is None:
+        return str(iso_date or '')
+
+    today = _date_only(today_iso())
+    days = js_round((when - today) / 86400.0)
+    if days == 0:
+        return 'Today'
+    if days == 1:
+        return 'Tomorrow'
+
+    t = time.localtime(when)
+    if -180 < days < 180:
+        return '%s, %s %d' % (_WEEKDAYS[t.tm_wday], _MONTHS[t.tm_mon - 1], t.tm_mday)
+
+    return '%s %d, %d' % (_MONTHS[t.tm_mon - 1], t.tm_mday, t.tm_year)
+
+
+def audience_label(code):
+    """"Women" or "Men" for a shiur meant for one of them, and nothing when it's for everyone.
+
+    The same rule shulgo.com's shiurim page uses: printing "Everyone" on every second row is noise
+    rather than information.
+    """
+    return 'Women' if code == 'women' else ('Men' if code == 'men' else '')
+
+
+def shiur_subtitle(item):
+    """The line under a shiur's name: who gives it, where it is, who it's for.
+
+    The time is deliberately not here. Unlike a minyan, a shiur's `when` arrives already written out
+    by the server ("Mondays, 8:00 PM") because it is a weekday pattern rather than a moment, and
+    nothing on this side would improve it.
+    """
+    item = item or {}
+    bits = []
+    if item.get('maggid'):
+        bits.append(item['maggid'])
+
+    shul = item.get('shul') or {}
+    if shul.get('name'):
+        bits.append(', '.join([x for x in (shul.get('name'), shul.get('city')) if x]))
+    elif item.get('place'):
+        bits.append(item['place'])
+
+    if item.get('online'):
+        bits.append('Online')
+
+    who = audience_label(item.get('audience'))
+    if who:
+        bits.append(who)
+
+    return ' · '.join(bits)
+
+
 # ---- distance and travel ---------------------------------------------------------------------
 
 def miles(value):

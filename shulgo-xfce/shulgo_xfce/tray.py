@@ -29,10 +29,11 @@ from gi.repository import GLib, Gio, Gtk  # noqa: E402
 
 from . import config  # noqa: E402
 from .api import Cache, ShulGoApi  # noqa: E402
-from .pick import headline as pick_headline, still_ahead  # noqa: E402
+from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noqa: E402
 from .fmt import (  # noqa: E402
-    countdown, countdown_short, escape_markup, minutes_until, minyan_destination, minyan_note,
-    minyan_subtitle, maps_uri, offline_notice, tefillah_label, today_iso, updated_ago, zmanim_list,
+    countdown, countdown_short, escape_markup, event_date, maps_uri, miles, minutes_until,
+    minyan_destination, minyan_note, minyan_subtitle, offline_notice, shiur_subtitle,
+    tefillah_label, today_iso, updated_ago, zmanim_list,
 )
 
 ICON_NAME = 'shulgo'
@@ -74,9 +75,15 @@ class ShulGoTray:
         # What we know. `why` and `staleSince` are the same names format.js's offlineNotice reads, so
         # the wording code can be handed this dict as it stands.
         self.state = {
-            'minyanim': [], 'zmanim': {}, 'updated': 0, 'why': None, 'whyMessage': None,
-            'staleSince': 0, 'busy': False,
+            'minyanim': [], 'zmanim': {}, 'events': [], 'shiurim': [],
+            'updated': 0, 'why': None, 'whyMessage': None, 'staleSince': 0, 'busy': False,
         }
+
+        # The submenus are rebuilt from scratch, which is the most expensive thing this program does;
+        # the minyan rows beside them are only relabelled. So they are rebuilt when new data arrives
+        # and NOT on the one-minute countdown tick, which would otherwise throw away and remake three
+        # menus a minute on a 1 GHz CPU for the sake of numbers that did not change.
+        self._lists_dirty = True
 
         self._work = None
         self._items = []          # the reusable minyan rows
@@ -115,6 +122,16 @@ class ShulGoTray:
         self.zmanim_item.set_submenu(self.zmanim_menu)
         self.menu.append(self.zmanim_item)
 
+        self.events_item = Gtk.MenuItem(label='Upcoming events')
+        self.events_menu = Gtk.Menu()
+        self.events_item.set_submenu(self.events_menu)
+        self.menu.append(self.events_item)
+
+        self.shiurim_item = Gtk.MenuItem(label='Shiurim nearby')
+        self.shiurim_menu = Gtk.Menu()
+        self.shiurim_item.set_submenu(self.shiurim_menu)
+        self.menu.append(self.shiurim_item)
+
         self.menu.append(Gtk.SeparatorMenuItem())
         self.footer = self._text_item('', sensitive=False)
         self.menu.append(self.footer)
@@ -138,6 +155,8 @@ class ShulGoTray:
         self.notice.hide()
         self.footer.hide()
         self.zmanim_item.hide()
+        self.events_item.hide()
+        self.shiurim_item.hide()
 
         indicator, flavour = _load_indicator()
         self.flavour = flavour
@@ -206,17 +225,22 @@ class ShulGoTray:
         )
         zmanim = ({'ok': True, 'data': {}} if self.settings.get('show-zmanim') != 'yes'
                   else api.zmanim(lat, lng, date=today_iso()))
+        # Each of these is one more request per refresh, which is why they are switchable and why the
+        # settings window says so. Their TTLs are ten minutes against the minyan list's one, so a
+        # refresh usually answers them from memory without touching the network at all.
+        events = ({'ok': True, 'data': {}} if self.settings.get('show-events') != 'yes'
+                  else api.events(lat, lng))
+        shiurim = ({'ok': True, 'data': {}} if self.settings.get('show-shiurim') != 'yes'
+                   else api.shiurim(lat, lng))
 
-        GLib.idle_add(self._absorb, minyanim, zmanim)
+        GLib.idle_add(self._absorb, minyanim, zmanim, events, shiurim)
 
-    def _absorb(self, minyanim, zmanim):
+    def _absorb(self, minyanim, zmanim, events, shiurim):
         """Back on the main loop with whatever came of it."""
         self.state['busy'] = False
 
         if minyanim.get('ok'):
-            # /next answers a bare array; store.js reads it the same way.
-            data = minyanim.get('data')
-            self.state['minyanim'] = data if isinstance(data, list) else []
+            self.state['minyanim'] = rows_in(minyanim)
             if minyanim.get('stale'):
                 self.state['why'] = minyanim.get('why')
                 self.state['whyMessage'] = minyanim.get('whyMessage')
@@ -234,6 +258,12 @@ class ShulGoTray:
             data = zmanim.get('data')
             self.state['zmanim'] = data if isinstance(data, dict) else {}
 
+        if events.get('ok'):
+            self.state['events'] = rows_in(events, 'events')
+        if shiurim.get('ok'):
+            self.state['shiurim'] = rows_in(shiurim, 'shiurim')
+
+        self._lists_dirty = True
         self._draw()
 
         return False
@@ -317,7 +347,11 @@ class ShulGoTray:
                       % config.as_int(self.settings, 'window-minutes'))
             self.notice.show()
 
-        self._draw_zmanim()
+        if self._lists_dirty:
+            self._draw_zmanim()
+            self._draw_events()
+            self._draw_shiurim()
+            self._lists_dirty = False
 
         updated = updated_ago(self.state['updated']) if self.state['updated'] else ''
         self._set(self.footer, '<small>%s</small>' % escape_markup(updated) if updated else '')
@@ -348,6 +382,84 @@ class ShulGoTray:
             self.zmanim_menu.append(item)
         self.zmanim_menu.show_all()
         self.zmanim_item.show()
+
+    def _draw_events(self):
+        """Upcoming events near the saved place, worded as the GNOME and Mac widgets word them."""
+        if self.settings.get('show-events') != 'yes':
+            self.events_item.hide()
+
+            return
+
+        for child in self.events_menu.get_children():
+            self.events_menu.remove(child)
+
+        rows = self.state['events'][:config.as_int(self.settings, 'list-length')]
+        if not rows:
+            self.events_menu.append(
+                self._text_item('<i>No events coming up near here.</i>', sensitive=False))
+        for event in rows:
+            when = event_date(event.get('date'))
+            if event.get('start_time'):
+                when = '%s, %s' % (when, event['start_time'])
+            line = '<b>%s</b>' % escape_markup(event.get('title') or 'An event')
+            where = ' · '.join([x for x in (
+                when,
+                event.get('where'),
+                'Online' if event.get('online') else '',
+                miles(event.get('distance_miles')),
+            ) if x])
+            if where:
+                line += '\n<small>%s</small>' % escape_markup(where)
+
+            item = self._text_item(line)
+            item.shulgo_uri = event.get('url') or ('%s/events' % self.api.site_url)
+            item.connect('activate', self._on_uri_item)
+            self.events_menu.append(item)
+
+        self.events_menu.show_all()
+        self.events_item.show()
+
+    def _draw_shiurim(self):
+        """Shiurim near the saved place.
+
+        A shiur's `when` arrives already written out by the server ("Mondays, 8:00 PM") because it is
+        a weekday pattern rather than a moment, so there is no countdown here and nothing to tick.
+        """
+        if self.settings.get('show-shiurim') != 'yes':
+            self.shiurim_item.hide()
+
+            return
+
+        for child in self.shiurim_menu.get_children():
+            self.shiurim_menu.remove(child)
+
+        rows = self.state['shiurim'][:config.as_int(self.settings, 'list-length')]
+        if not rows:
+            self.shiurim_menu.append(
+                self._text_item('<i>No shiurim listed near here.</i>', sensitive=False))
+        for shiur in rows:
+            line = '<b>%s</b>' % escape_markup(shiur.get('title') or 'A shiur')
+            if shiur.get('when'):
+                line += '  <small>%s</small>' % escape_markup(shiur['when'])
+            subtitle = shiur_subtitle(shiur)
+            if subtitle:
+                line += '\n<small>%s</small>' % escape_markup(subtitle)
+
+            item = self._text_item(line)
+            # A shiur has no page of its own on ShulGo, so the useful click is directions when we
+            # have them and the shiurim list when we don't.
+            item.shulgo_uri = (maps_uri(shiur.get('directions'))
+                               or '%s/shiurim' % self.api.site_url)
+            item.connect('activate', self._on_uri_item)
+            self.shiurim_menu.append(item)
+
+        self.shiurim_menu.show_all()
+        self.shiurim_item.show()
+
+    def _on_uri_item(self, item):
+        uri = getattr(item, 'shulgo_uri', None)
+        if uri:
+            self._open(uri)
 
     def _set(self, item, markup):
         item.shulgo_label.set_markup(markup)

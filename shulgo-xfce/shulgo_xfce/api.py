@@ -40,6 +40,7 @@ TTL = {
     'calendar': 43200,
     'places': 300,
     'shuls': 300,
+    'shiurim': 600,
 }
 
 # How old a written-down answer may be and still be worth showing when we can't reach ShulGo.
@@ -52,6 +53,7 @@ OFFLINE_TTL = {
     'calendar': 2592000,
     'places': 2592000,
     'shuls': 604800,
+    'shiurim': 604800,   # a week; a weekly shiur is still on next week
 }
 
 MAX_ENTRIES = 60
@@ -199,6 +201,19 @@ class ShulGoApi:
             q['date'] = date
 
         return self._get('zmanim', q)
+
+    def events(self, lat, lng, page=1):
+        """Upcoming events within fifty miles of a point, soonest first."""
+        return self._get('events', {'lat': lat, 'lng': lng, 'page': page})
+
+    def shiurim(self, lat, lng, page=1):
+        """Shiurim near a point.
+
+        No search word is passed, which is what makes the server treat it as "near here" — a typed
+        search is meant to reach the whole directory rather than your neighbourhood, and a tray menu
+        has nowhere to type.
+        """
+        return self._get('shiurim', {'lat': lat, 'lng': lng, 'page': page})
 
     def places(self, text):
         """Cities, neighborhoods and zip codes, for the place box."""
