@@ -35,10 +35,11 @@ PSS and **14.6 MB private** — most of the resident set is GTK and Python share
 is already running. At the whole-machine level the desktop went from 125 MB used to 129 MB. So the
 honest figure against the 30 MB target is about 15 MB of its own, and it passes.
 
-**What that run has not touched:** `settings_window.py` was never opened, so that module is still
-unexecuted; and with no API key on the VM, nothing populated — no minyanim, no zmanim, no events, no
-shiurim have ever been drawn by this program. The submenus are hidden until a place is chosen, which
-is by design, so their absence in that state is correct rather than a fault.
+**What those runs have not touched:** `settings_window.py` has never been opened, so that module is
+still unexecuted; and with no API key on the VM, nothing has populated — no minyanim, no zmanim, no
+events, no shiurim have ever been drawn by this program. The submenus are hidden until a place is
+chosen, which is by design, so their absence in that state is correct rather than a fault. The
+icon's "not found anywhere" branch has not been exercised either, only the other two.
 
 **The logic is tested. Most of the window still is not.**
 
@@ -58,9 +59,14 @@ resolve**, and whether a key and a place have been saved.
 That third line was added because the first real run hit exactly it. The tray registered itself with
 the panel correctly and drew nothing, because `shulgo` is an icon *name* and a name resolves only
 once the file is in an icon theme — run from a checkout there was nothing to resolve. A check written
-to catch silent failures that missed the silent failure in front of it was not much of a check. The
-widget now points the panel at `packaging/shulgo.svg` when the theme has no icon, so an in-place run
-is visible, and `--check` says which of the two is happening.
+to catch silent failures that missed the silent failure in front of it was not much of a check.
+
+The widget now points the panel at `packaging/shulgo.svg` when the theme has no icon, and **this has
+been confirmed on the target rather than assumed**: with every `shulgo*.svg` deleted from the system
+and the hicolor cache rebuilt, the running tray advertised `IconThemePath = /opt/shulgo-xfce/
+packaging` over D-Bus and Xfce 4.18's systray drew the icon from it. libayatana-appindicator 0.6.0
+sets the property and the panel honours it, so the `Gtk.StatusIcon`-from-file path stays only as a
+fallback for panels that do not.
 
 ## If every GTK program on Arch Linux 32 is broken, it isn't this one
 
