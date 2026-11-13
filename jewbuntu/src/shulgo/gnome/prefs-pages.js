@@ -294,26 +294,8 @@ export function accountPage(settings, apiFor) {
     });
     page.add(group);
 
-    // How an ordinary person gets a key. The admin page is no use to them — it sits behind ShulGo's own
-    // staff login — so the request form is the row that comes first.
-    const ask = new Adw.ActionRow({
-        title: 'Ask ShulGo for a key',
-        subtitle: 'Opens the request form in your browser',
-        activatable: true,
-        use_markup: false,
-    });
-    ask.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
-    ask.connect('activated', () => {
-        const url = `${apiFor().siteUrl}/developers/request`;
-        try {
-            Gtk.UriLauncher
-                ? new Gtk.UriLauncher({ uri: url }).launch(ask.get_root(), null, null)
-                : Gio.AppInfo.launch_default_for_uri(url, null);
-        } catch (e) {
-            logError(e, `ShulGo: could not open ${url}`);
-        }
-    });
-    group.add(ask);
+    // No "ask ShulGo for a key" row here on purpose. Keys come from a ShulGo administrator, and a
+    // button to a public request form told people something different from every other screen.
 
     const entry = new Adw.PasswordEntryRow({ title: 'Key', text: loadApiKey() });
     group.add(entry);
