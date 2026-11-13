@@ -15,7 +15,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gtk  # noqa: E402
 
-from . import config  # noqa: E402
+from . import config, icon as icons  # noqa: E402
 
 MODES = (('drive', 'Driving'), ('walk', 'Walking'))
 TEFILLOS = (
@@ -40,6 +40,20 @@ class SettingsWindow(Gtk.Window):
         self.set_border_width(12)
         self.connect('destroy', self._finish)
 
+        # Give the window its own icon rather than relying on a dock matching the .desktop file.
+        # From a checkout the themed name resolves to nothing, exactly as it did for the tray, so
+        # the bundled file is used in that case — the same decision, made the same way.
+        try:
+            directory = icons.bundled_dir()
+            if icons.plan(Gtk.IconTheme.get_default().has_icon(icons.ICON_NAME),
+                          directory) == icons.BUNDLED:
+                self.set_icon_from_file(icons.bundled_file(directory))
+            else:
+                self.set_icon_name(icons.ICON_NAME)
+        except Exception:
+            # A window without its own icon is a cosmetic loss, not a reason to fail to open.
+            pass
+
         grid = Gtk.Grid(row_spacing=8, column_spacing=10)
         self.add(grid)
         row = 0
@@ -54,7 +68,11 @@ class SettingsWindow(Gtk.Window):
         self.key_entry.set_hexpand(True)
         grid.attach(self.key_entry, 0, row, 2, 1)
         row += 1
-        grid.attach(self._note('Make one in ShulGo under Admin › System › API & apps. It is kept in '
+        # NOT "Admin › System › API & apps": that is where an administrator makes a key, and an
+        # ordinary person running this widget cannot reach it. Telling them to go somewhere they
+        # have no access to is worse than saying nothing.
+        grid.attach(self._note('Ask your ShulGo administrator for a key, or request one at '
+                               'shulgo.com/developers/request. It is kept in '
                                '~/.config/jewbuntu/shulgo.conf, readable only by you — never in '
                                'dconf.'), 0, row, 2, 1)
         row += 1

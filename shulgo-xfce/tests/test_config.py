@@ -78,7 +78,7 @@ class TheKeyFile(unittest.TestCase):
             with open(path, 'w', encoding='utf-8') as fh:
                 fh.write('\n'.join([
                     '# ShulGo API key for the JewBuntu widget.',
-                    '# Make one in ShulGo: Admin › System › API & apps.',
+                    '# Ask your ShulGo administrator for a key, or request one at https://shulgo.com/developers/request.',
                     'api-key=%s' % A_KEY,
                     '',
                 ]))

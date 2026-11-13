@@ -9,4 +9,8 @@ Terminal=false
 Categories=Utility;Network;
 Keywords=minyan;shul;synagogue;zmanim;davening;
 StartupNotify=false
+# Matches GLib.set_prgname('shulgo-xfce') in __main__.py, which is what GTK puts in WM_CLASS.
+# Without the pair, a dock cannot tie the settings window to this entry and shows a generic
+# icon instead of the shul.
+StartupWMClass=shulgo-xfce
 X-XFCE-Autostart-Enabled=true

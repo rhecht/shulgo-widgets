@@ -122,7 +122,7 @@ export class Settings {
             }
             writeFileSync(this._keyFile, [
                 '# ShulGo API key.',
-                '# Make one in ShulGo: Admin › System › API & apps.',
+                '# Ask your ShulGo administrator for a key, or request one at https://shulgo.com/developers/request.',
                 `api-key=${clean}`,
                 '',
             ].join('\n'), { mode: 0o600 });

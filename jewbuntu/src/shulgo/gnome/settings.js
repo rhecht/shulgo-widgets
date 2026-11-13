@@ -138,7 +138,7 @@ export function saveApiKey(key) {
 
     const body = [
         '# ShulGo API key for the JewBuntu widget.',
-        '# Make one in ShulGo: Admin › System › API & apps.',
+        '# Ask your ShulGo administrator for a key, or request one at https://shulgo.com/developers/request.',
         `api-key=${clean}`,
         '',
     ].join('\n');

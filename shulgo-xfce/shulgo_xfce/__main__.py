@@ -87,7 +87,14 @@ def main(argv=None):
 
     import gi
     gi.require_version('Gtk', '3.0')
-    from gi.repository import Gtk
+    from gi.repository import GLib, Gtk
+
+    # Name the process before any window exists. GTK takes a toplevel's WM_CLASS from the program
+    # name, and without this it is "python3" or "__main__" — so a dock has nothing to match against
+    # shulgo-xfce.desktop and shows a generic cog instead of the shul. Must happen before the first
+    # window is realised, which is why it is here rather than in the settings window.
+    GLib.set_prgname('shulgo-xfce')
+    GLib.set_application_name('ShulGo')
 
     from .tray import ShulGoTray
 
