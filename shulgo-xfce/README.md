@@ -24,20 +24,43 @@ network touched every fifteen minutes by default.
 
 ## State, honestly
 
-**The logic is tested. The window is not.**
+**It has been run, once, by somebody else** — on an emulated Pentium III (QEMU TCG, SSE but no SSE2,
+256 MB) running Arch Linux 32 i686 with Xfce 4.18, by the Jewbuntu Arch port on 2026-11-13. The tray
+registered, the menu opened, the card rendered readably on the light Jewbuntu skin, and the one line
+on stderr was a deprecation warning from libayatana-appindicator. `AyatanaAppIndicator3` was the
+typelib it found, as expected.
 
-69 tests pass, covering the wording, the API client, the offline failsafe, the key and settings files,
-and the rules that decide what you see. Of those, 166 individual wording cases are checked *against
+**Memory, measured rather than claimed:** 42.9 MB RSS, but that is the misleading number. 24.2 MB
+PSS and **14.6 MB private** — most of the resident set is GTK and Python shared with the panel that
+is already running. At the whole-machine level the desktop went from 125 MB used to 129 MB. So the
+honest figure against the 30 MB target is about 15 MB of its own, and it passes.
+
+**What that run has not touched:** `settings_window.py` was never opened, so that module is still
+unexecuted; and with no API key on the VM, nothing populated — no minyanim, no zmanim, no events, no
+shiurim have ever been drawn by this program. The submenus are hidden until a place is chosen, which
+is by design, so their absence in that state is correct rather than a fault.
+
+**The logic is tested. Most of the window still is not.**
+
+81 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
+files, where the tray icon comes from, and the rules that decide what you see. Of those, 166 individual wording cases are checked *against
 the JavaScript* — see below.
 
-But `tray.py` and `settings_window.py` have never been executed. There is no PyGObject on the machine
-this was written on, so not one line of the GTK code has run, and no tray icon has ever appeared. A
-static check for undefined names passes, which is worth something and is not worth much: it caught
-one real crash-on-startup during development and it cannot catch a wrong argument to a GTK call.
+There is still no PyGObject on the machine this is written on, so the GTK code is only ever exercised
+by somebody else running it. A static check for undefined names passes, which is worth something and
+is not worth much: it caught one real crash-on-startup during development and it cannot catch a wrong
+argument to a GTK call.
 
-Treat the first run as the first run. `python3 -m shulgo_xfce --check` is there for exactly that
-moment — it reports which tray library is installed, whether there is a display, and whether a key and
-a place have been saved, which are the three things that make a tray icon silently not appear.
+`python3 -m shulgo_xfce --check` reports the four things that make a tray icon silently fail to
+appear: which tray library is installed, whether there is a display, **whether the icon will
+resolve**, and whether a key and a place have been saved.
+
+That third line was added because the first real run hit exactly it. The tray registered itself with
+the panel correctly and drew nothing, because `shulgo` is an icon *name* and a name resolves only
+once the file is in an icon theme — run from a checkout there was nothing to resolve. A check written
+to catch silent failures that missed the silent failure in front of it was not much of a check. The
+widget now points the panel at `packaging/shulgo.svg` when the theme has no icon, so an in-place run
+is visible, and `--check` says which of the two is happening.
 
 ## If every GTK program on Arch Linux 32 is broken, it isn't this one
 

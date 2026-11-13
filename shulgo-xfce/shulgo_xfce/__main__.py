@@ -3,9 +3,13 @@
     python3 -m shulgo_xfce           run it
     python3 -m shulgo_xfce --check   say what this machine has, and exit
 
---check exists because the three things that decide whether this works — which tray library is
-installed, whether there is a display, and whether a key has been saved — are exactly the things that
-are awkward to find out by watching a tray icon fail to appear.
+--check exists because the things that decide whether this works — which tray library is installed,
+whether there is a display, whether the icon will resolve, and whether a key and a place have been
+saved — are exactly the things that are awkward to find out by watching a tray icon fail to appear.
+
+The icon line was added after the first real run on a Pentium III, where the tray registered
+correctly and drew nothing because the icon was not in any theme. A check meant to catch silent
+failures that missed the silent failure in front of it was not much of a check.
 """
 
 import os
@@ -35,6 +39,18 @@ def check():
 
     display = os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')
     lines.append('display: %s' % (display or 'NONE — there is no desktop to put an icon on'))
+
+    # The fourth silent failure, and the one this command originally missed: the tray registers with
+    # the panel perfectly and shows nothing, because an icon NAME resolves only once the file is in
+    # an icon theme.
+    from . import icon as icons
+    directory = icons.bundled_dir()
+    try:
+        from gi.repository import Gtk as _Gtk
+        theme_has_icon = _Gtk.IconTheme.get_default().has_icon(icons.ICON_NAME)
+    except Exception:
+        theme_has_icon = False
+    lines.append(icons.describe(icons.plan(theme_has_icon, directory), directory))
 
     from . import config
     key = config.load_api_key()

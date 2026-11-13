@@ -27,7 +27,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gio, Gtk  # noqa: E402
 
-from . import config  # noqa: E402
+from . import config, icon as icons  # noqa: E402
 from .api import Cache, ShulGoApi  # noqa: E402
 from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noqa: E402
 from .fmt import (  # noqa: E402
@@ -36,7 +36,7 @@ from .fmt import (  # noqa: E402
     tefillah_label, today_iso, updated_ago, zmanim_list,
 )
 
-ICON_NAME = 'shulgo'
+ICON_NAME = icons.ICON_NAME
 
 
 def _load_indicator():
@@ -158,11 +158,31 @@ class ShulGoTray:
         self.events_item.hide()
         self.shiurim_item.hide()
 
+        # Where the icon is going to come from. A name alone resolves only once the file is in an
+        # icon theme, so run from a checkout there is nothing to resolve and the panel draws nothing
+        # at all — no error, no warning, no icon. Found the hard way on the first machine that ever
+        # ran this.
+        self.icon_dir = icons.bundled_dir()
+        theme_has_icon = False
+        try:
+            theme_has_icon = Gtk.IconTheme.get_default().has_icon(ICON_NAME)
+        except Exception:
+            pass
+        self.icon_state = icons.plan(theme_has_icon, self.icon_dir)
+
         indicator, flavour = _load_indicator()
         self.flavour = flavour
         if indicator is not None:
-            self.indicator = indicator.Indicator.new(
-                'shulgo-xfce', ICON_NAME, indicator.IndicatorCategory.APPLICATION_STATUS)
+            if self.icon_state == icons.BUNDLED and hasattr(indicator.Indicator, 'new_with_path'):
+                # The StatusNotifierItem protocol carries an IconThemePath for exactly this, and the
+                # panel looks for <path>/<name>.svg directly. Guarded by hasattr because this code
+                # has to run against two different appindicator libraries and I can only test one.
+                self.indicator = indicator.Indicator.new_with_path(
+                    'shulgo-xfce', ICON_NAME, indicator.IndicatorCategory.APPLICATION_STATUS,
+                    self.icon_dir)
+            else:
+                self.indicator = indicator.Indicator.new(
+                    'shulgo-xfce', ICON_NAME, indicator.IndicatorCategory.APPLICATION_STATUS)
             self.indicator.set_status(indicator.IndicatorStatus.ACTIVE)
             self.indicator.set_menu(self.menu)
             # Some panels show this beside the icon and some ignore it. Where it shows, it is the
@@ -172,7 +192,9 @@ class ShulGoTray:
             self.status_icon = None
         else:
             self.indicator = None
-            self.status_icon = Gtk.StatusIcon.new_from_icon_name(ICON_NAME)
+            bundled = icons.bundled_file(self.icon_dir) if self.icon_state == icons.BUNDLED else None
+            self.status_icon = (Gtk.StatusIcon.new_from_file(bundled) if bundled
+                                else Gtk.StatusIcon.new_from_icon_name(ICON_NAME))
             self.status_icon.set_tooltip_text('ShulGo')
             self.status_icon.connect(
                 'popup-menu',
