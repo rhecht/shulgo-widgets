@@ -47,7 +47,12 @@ class Linking:
         self.started_at = time.time() if now is None else now
         self.expires_at = self.started_at + max(1, int(data.get('expires_in') or 600))
         self.key = None
+        # Two different jobs, and conflating them was a bug: `message` is why it ENDED, `waiting` is
+        # why it has not ended yet. With one field the server's "Nobody has approved this yet" was
+        # still on screen after the code expired, because a stale waiting-reason outranked the
+        # expiry. Seen twice on a real machine before anybody noticed it here.
         self.message = None
+        self.waiting = None
 
     @property
     def usable(self):
@@ -95,7 +100,7 @@ class Linking:
             # person watching deserves to know which. A network blip carries no message and leaves
             # whatever was last said standing.
             if code == 'authorization_pending':
-                self.message = answer.get('message') or None
+                self.waiting = answer.get('message') or None
 
             return PENDING
 
@@ -125,9 +130,9 @@ def words(state, linking):
     if state == ERROR:
         return linking.message or 'Something went wrong.'
 
-    # Whatever the server last said about why we are waiting, when it said anything.
-    if linking.message:
-        return linking.message
+    # Whatever the server last said about why we are STILL waiting — never why it ended.
+    if linking.waiting:
+        return linking.waiting
 
     left = linking.seconds_left()
     if left > 60:

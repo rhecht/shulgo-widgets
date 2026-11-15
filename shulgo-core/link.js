@@ -48,7 +48,12 @@ export class Linking {
         this.startedAt = now;
         this.expiresAt = now + Math.max(1, Number(data.expires_in) || 600);
         this.key = null;
+        // Two different jobs, and conflating them was a bug: `message` is why it ENDED, `waiting` is
+        // why it has not ended yet. With one field the server's "Nobody has approved this yet" was
+        // still on screen after the code expired, because a stale waiting-reason outranked the
+        // expiry. Seen twice on a real machine before anybody noticed it here.
         this.message = null;
+        this.waiting = null;
     }
 
     /** A linking with no device code is not one; say so rather than poll nothing for ten minutes. */
@@ -100,7 +105,7 @@ export class Linking {
             // person watching deserves to know which. A network blip carries no message and leaves
             // whatever was last said standing.
             if (code === 'authorization_pending')
-                this.message = got.message || null;
+                this.waiting = got.message || null;
 
             return PENDING;
         }
@@ -133,9 +138,9 @@ export function words(state, linking) {
     if (state === ERROR)
         return linking?.message ?? 'Something went wrong.';
 
-    // Whatever the server last said about why we are waiting, when it said anything.
-    if (linking?.message)
-        return linking.message;
+    // Whatever the server last said about why we are STILL waiting — never why it ended.
+    if (linking?.waiting)
+        return linking.waiting;
 
     const left = linking?.secondsLeft() ?? 0;
     if (left > 60)

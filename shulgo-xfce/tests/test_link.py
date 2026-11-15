@@ -105,6 +105,24 @@ class WhatEachAnswerMeans(unittest.TestCase):
         self.it.absorb({'ok': False, 'code': 'network'})
         self.assertIn('administrator', link.words(link.PENDING, self.it))
 
+    def test_a_waiting_reason_does_not_survive_the_code_running_out(self):
+        """The bug, from a real machine: after the code expired the window still said "Nobody has
+        approved this yet", because the reason we were WAITING outranked the reason it ENDED."""
+        self.it.absorb({'ok': False, 'code': 'authorization_pending',
+                        'message': 'Nobody has approved this yet.'})
+        self.assertIn('Nobody has approved', link.words(link.PENDING, self.it))
+
+        said = link.words(link.EXPIRED, self.it)
+        self.assertNotIn('Nobody has approved', said)
+        self.assertIn('run out', said)
+
+    def test_nor_any_other_ending(self):
+        self.it.absorb({'ok': False, 'code': 'authorization_pending',
+                        'message': 'Waiting for a ShulGo administrator.'})
+        for state in (link.DENIED, link.EXPIRED, link.ERROR):
+            self.assertNotIn('administrator', link.words(state, self.it),
+                             'a waiting reason must not explain an ending')
+
     def test_without_a_reason_it_counts_down_as_before(self):
         self.it.absorb({'ok': False, 'code': 'authorization_pending'})
         self.assertIn('minutes left', link.words(link.PENDING, self.it))
