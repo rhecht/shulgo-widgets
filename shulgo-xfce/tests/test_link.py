@@ -5,6 +5,7 @@ conversation — and particularly about the answers that are NOT failures, which
 client usually goes wrong: authorization_pending and slow_down are the normal course of events.
 """
 
+import os
 import re
 import sys
 import time
@@ -14,6 +15,25 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shulgo_xfce import link  # noqa: E402
+
+
+class InATemporaryHome:
+    """Points XDG_CONFIG_HOME somewhere disposable, as test_config.py does."""
+
+    def __enter__(self):
+        import tempfile
+        self.dir = tempfile.TemporaryDirectory()
+        self.saved = os.environ.get('XDG_CONFIG_HOME')
+        os.environ['XDG_CONFIG_HOME'] = os.path.join(self.dir.name, 'config')
+
+        return self
+
+    def __exit__(self, *_):
+        if self.saved is None:
+            os.environ.pop('XDG_CONFIG_HOME', None)
+        else:
+            os.environ['XDG_CONFIG_HOME'] = self.saved
+        self.dir.cleanup()
 
 STARTED = {
     'device_code': 'a' * 64,
@@ -197,3 +217,75 @@ class WhatThePersonIsTold(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ALinkingThatOutlivesItsWindow(unittest.TestCase):
+    """The bug: closing the window threw the linking away.
+
+    The window says "you can close this; it keeps working for three days", and for a while that was
+    false — and because the key is only minted on the first poll AFTER approval, closing the window
+    wasted both the person's approval and an administrator's. Somebody on a Pentium III lost a real
+    pair of approvals to it.
+    """
+
+    def test_a_pending_linking_survives_being_written_down(self):
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            self.assertIsNone(config.load_pending())
+
+            config.save_pending('a' * 64, 'K7PQ-4RDT', time.time() + 3600, 5)
+            saved = config.load_pending()
+            self.assertEqual(saved['device_code'], 'a' * 64)
+            self.assertEqual(saved['user_code'], 'K7PQ-4RDT')
+            self.assertEqual(saved['interval'], 5)
+
+            it = link.Linking.resume(saved)
+            self.assertTrue(it.usable)
+            self.assertFalse(it.expired())
+            self.assertGreater(it.seconds_left(), 3000)
+
+    def test_it_is_owner_only_like_the_key(self):
+        """A device code is a bearer token until it is used."""
+        import os
+        import stat
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            config.save_pending('b' * 64, 'AAAA-BBBB', time.time() + 60, 5)
+            mode = stat.S_IMODE(os.stat(config.pending_path()).st_mode)
+            self.assertEqual(mode, 0o600)
+
+    def test_one_that_ran_out_is_the_same_as_none_and_is_tidied_away(self):
+        import os
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            config.save_pending('c' * 64, 'AAAA-BBBB', time.time() - 1, 5)
+            self.assertIsNone(config.load_pending())
+            self.assertFalse(os.path.exists(config.pending_path()),
+                             'nothing can be done with it, so it should not linger')
+
+    def test_clearing_it_is_safe_when_there_is_nothing_there(self):
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            config.clear_pending()
+            config.clear_pending()
+
+    def test_rubbish_in_the_file_is_not_a_linking(self):
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            os.makedirs(os.path.dirname(config.pending_path()), exist_ok=True)
+            with open(config.pending_path(), 'w', encoding='utf-8') as fh:
+                fh.write('nonsense\nexpires-at=soon\n')
+            self.assertIsNone(config.load_pending())
+
+    def test_a_resumed_linking_reads_answers_like_any_other(self):
+        it = link.Linking.resume({'device_code': 'd' * 64, 'user_code': 'AAAA-BBBB',
+                                  'expires_at': time.time() + 600, 'interval': 5})
+        self.assertEqual(it.absorb({'ok': False, 'code': 'authorization_pending'}), link.PENDING)
+        self.assertEqual(it.absorb({'ok': True, 'data': {'api_key': 'sg_live_' + 'ab12cd34' * 5}}),
+                         link.DONE)
+        self.assertTrue(it.key.startswith('sg_live_'))

@@ -145,6 +145,11 @@ class LinkWindow(Gtk.Window):
             return False
 
         self.linking = link.Linking(answer.get('data') or {})
+        if self.linking.usable:
+            # Written down before anything else, so closing this window — or losing the power — does
+            # not throw away an approval somebody is about to give. The tray picks it up from here.
+            config.save_pending(self.linking.device_code, self.linking.user_code,
+                                self.linking.expires_at, self.linking.interval)
         if not self.linking.usable:
             self.steps.set_text('ShulGo sent an answer this widget could not use.')
             self.again.set_sensitive(True)
@@ -214,6 +219,8 @@ class LinkWindow(Gtk.Window):
         self.status.set_text(link.words(state, self.linking))
 
         if state != link.DONE:
+            # Denied, expired or broken: there is nothing left for the tray to wait on either.
+            config.clear_pending()
             self.code.set_text('')
             self.again.set_sensitive(True)
 
@@ -222,18 +229,26 @@ class LinkWindow(Gtk.Window):
         # The key goes exactly where a typed one goes: the same file, the same permissions. Nothing
         # about having arrived over the wire makes it different.
         config.save_api_key(self.linking.key)
+        config.clear_pending()
         self.steps.set_text('Done.')
         self.where.set_text('')
         self.code.set_text('')
-        self.linking = None
         callback, self._on_done = self._on_done, None
         if callback is not None:
             callback(True)
         GLib.timeout_add_seconds(2, lambda: (self.destroy(), False)[1])
 
     def _finish(self, *_):
+        """Closing this window stops THIS window polling, and nothing else.
+
+        It used to abandon the linking outright, which made a liar of the sentence above it — "you
+        can close this; it keeps working for three days" — and, because the key is only minted on
+        the first poll after approval, wasted both the person's approval and an administrator's. The
+        tray carries on from the file config.save_pending wrote.
+        """
         self._stop_timer()
+        linked = self.linking is not None and self.linking.key is not None
         self.linking = None
         callback, self._on_done = self._on_done, None
         if callback is not None:
-            callback(False)
+            callback(linked)

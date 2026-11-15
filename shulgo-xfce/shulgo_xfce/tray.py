@@ -30,6 +30,7 @@ from gi.repository import GLib, Gio, Gtk  # noqa: E402
 from . import config, icon as icons  # noqa: E402
 from .api import Cache, ShulGoApi  # noqa: E402
 from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noqa: E402
+from . import link  # noqa: E402
 from .fmt import (  # noqa: E402
     countdown, countdown_short, escape_markup, event_date, maps_uri, miles, minutes_until,
     minyan_destination, minyan_note, minyan_subtitle, offline_notice, shiur_subtitle,
@@ -90,10 +91,16 @@ class ShulGoTray:
         self._settings_window = None
 
         self._timer = None
+        # A linking somebody started and walked away from. The window does not own its life: it is
+        # written down, and this picks it up — after the window closes, and after a reboot, which on
+        # a machine somebody switches off overnight is the normal case.
+        self._pending = None
+        self._pending_timer = None
         self._build()
         self.refresh()
         GLib.timeout_add_seconds(60, self._tick)
         self._start_timer()
+        self._watch_pending()
 
     # ---- the tray icon ---------------------------------------------------------------------
 
@@ -291,6 +298,82 @@ class ShulGoTray:
 
         return False
 
+    # ---- a linking that outlived its window ---------------------------------------------------
+
+    def _watch_pending(self):
+        """Carry on asking about a linking the window is no longer watching.
+
+        Started when the tray starts, and again whenever the link window closes. Does nothing when
+        there is nothing pending, which is almost always.
+        """
+        self._stop_pending_timer()
+        saved = config.load_pending()
+        if not saved:
+            self._pending = None
+            self._draw()
+
+            return
+
+        self._pending = link.Linking.resume(saved)
+        self._draw()
+        self._pending_timer = GLib.timeout_add_seconds(max(1, self._pending.interval),
+                                                       self._poll_pending)
+
+    def _stop_pending_timer(self):
+        if self._pending_timer is not None:
+            GLib.source_remove(self._pending_timer)
+            self._pending_timer = None
+
+    def _poll_pending(self):
+        self._pending_timer = None
+        if self._pending is None:
+            return False
+
+        if self._pending.expired():
+            config.clear_pending()
+            self._pending = None
+            self._draw()
+
+            return False
+
+        threading.Thread(target=self._do_poll_pending,
+                         args=(self._pending.device_code,), daemon=True).start()
+
+        return False
+
+    def _do_poll_pending(self, device_code):
+        GLib.idle_add(self._pending_answer, self.api.device_poll(device_code))
+
+    def _pending_answer(self, answer):
+        if self._pending is None:
+            return False
+
+        state = self._pending.absorb(answer)
+        if state == link.PENDING:
+            self._pending_timer = GLib.timeout_add_seconds(max(1, self._pending.interval),
+                                                           self._poll_pending)
+            self._draw()
+
+            return False
+
+        if state == link.DONE:
+            # The same file a typed key goes in, and then straight to work: somebody approved this
+            # hours ago and the widget should simply start.
+            config.save_api_key(self._pending.key)
+            config.clear_pending()
+            self._pending = None
+            self.api.reconfigure(api_key=config.load_api_key())
+            self._draw()
+            self.refresh(fresh=True)
+
+            return False
+
+        config.clear_pending()
+        self._pending = None
+        self._draw()
+
+        return False
+
     def _start_timer(self):
         """(Re)arm the network timer from the setting.
 
@@ -336,7 +419,11 @@ class ShulGoTray:
         self._set(self.header, '<b>%s</b>' % escape_markup(place[2]))
 
         notice = offline_notice(self.state, bool(rows) or bool(self.state['zmanim']))
-        if not self.api.has_key:
+        if self._pending is not None:
+            self._set(self.notice, '<i>%s</i>'
+                      % escape_markup(link.words(link.PENDING, self._pending)))
+            self.notice.show()
+        elif not self.api.has_key:
             self._set(self.notice, 'No key yet — choose “Link this computer”.')
             self.notice.show()
         elif notice:
@@ -520,6 +607,8 @@ class ShulGoTray:
             if linked:
                 self.api.reconfigure(api_key=config.load_api_key())
                 self.refresh(fresh=True)
+            # Either way: if the window was closed on a linking still waiting, this picks it up.
+            self._watch_pending()
 
         LinkWindow(self.api, done)
 
@@ -540,6 +629,8 @@ class ShulGoTray:
                                      api_key=config.load_api_key())
                 self._start_timer()
                 self.refresh(fresh=True)
+            # A linking can be started from inside Settings too, and left waiting.
+            self._watch_pending()
 
         self._settings_window = SettingsWindow(self.api, done)
         self._settings_window.present()

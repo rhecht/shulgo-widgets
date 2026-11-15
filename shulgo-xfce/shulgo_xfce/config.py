@@ -23,6 +23,7 @@ import os
 import re
 import stat
 import tempfile
+import time
 
 _LINE = re.compile(r'^\s*([a-z][a-z0-9-]*)\s*=\s*(.*?)\s*$')
 # The key is matched with \S+ exactly as the GNOME half does, so a line either side writes is read
@@ -59,6 +60,69 @@ def key_path():
 def settings_path():
     """~/.config/jewbuntu/shulgo-xfce.conf — this widget's own."""
     return os.path.join(_config_dir(), 'shulgo-xfce.conf')
+
+
+def pending_path():
+    """~/.config/jewbuntu/shulgo-xfce-linking.conf — a linking that has not finished yet.
+
+    Written because the window promises "you can close this; it keeps working for three days", and
+    for a while that was a lie: closing the window threw the linking away, and since the key is only
+    minted on the first poll AFTER approval, it wasted both the person's approval and an
+    administrator's. On a machine somebody switches off overnight, surviving a reboot is the normal
+    case rather than the exotic one.
+
+    Owner-only like the key file: a device code is a bearer token until it is used.
+    """
+    return os.path.join(_config_dir(), 'shulgo-xfce-linking.conf')
+
+
+def save_pending(device_code, user_code, expires_at, interval):
+    """Remember a linking in progress, so the tray can carry on after the window is gone."""
+    _write_private(pending_path(), '\n'.join([
+        '# A ShulGo linking waiting to be approved. Deleted when it finishes or runs out.',
+        'device-code=%s' % device_code,
+        'user-code=%s' % user_code,
+        'expires-at=%d' % int(expires_at),
+        'interval=%d' % int(interval),
+        '',
+    ]))
+
+
+def load_pending():
+    """The linking in progress, or None when there is none or it has run out."""
+    found = {}
+    for line in _read_lines(pending_path()):
+        m = _LINE.match(line)
+        if m and not line.lstrip().startswith('#'):
+            found[m.group(1)] = m.group(2)
+
+    if not found.get('device-code'):
+        return None
+    try:
+        expires_at = int(found.get('expires-at') or 0)
+        interval = int(found.get('interval') or 5)
+    except (TypeError, ValueError):
+        return None
+
+    # Expired is the same as absent, and the file goes: nothing can be done with it any more.
+    if expires_at <= time.time():
+        clear_pending()
+
+        return None
+
+    return {
+        'device_code': found['device-code'],
+        'user_code': found.get('user-code') or '',
+        'expires_at': expires_at,
+        'interval': max(1, interval),
+    }
+
+
+def clear_pending():
+    try:
+        os.unlink(pending_path())
+    except OSError:
+        pass
 
 
 def cache_path():

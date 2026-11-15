@@ -54,6 +54,24 @@ class Linking:
         self.message = None
         self.waiting = None
 
+    @classmethod
+    def resume(cls, saved):
+        """Rebuild a linking from what config.save_pending wrote down.
+
+        Only the device code and the deadline are worth keeping: the short code is for showing, and
+        everything else — the interval, what the server last said — is re-learned on the next poll.
+        """
+        saved = saved or {}
+        it = cls({
+            'device_code': saved.get('device_code'),
+            'user_code': saved.get('user_code'),
+            'interval': saved.get('interval'),
+            'expires_in': 1,
+        })
+        it.expires_at = float(saved.get('expires_at') or 0)
+
+        return it
+
     @property
     def usable(self):
         """A linking with no device code is not one; say so rather than poll nothing forever."""

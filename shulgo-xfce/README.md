@@ -113,6 +113,13 @@ tested — including the two that are easy to get wrong because they are not fai
 sleeping WiFi card is not a reason to throw that away. The code's own deadline ends it soon
 enough.
 
+Two yeses are needed: yours, on your phone, and a ShulGo administrator's — they are emailed the
+moment you approve your own. So the wait after you approve is on a person reading an email, not on
+you. **Closing the window is safe**: the pending linking is written down (owner-only, beside the key)
+and the tray carries on asking, through a restart and through the night if need be. It was not always
+safe — closing it used to throw the linking away and waste both approvals, which somebody found on a
+Pentium III rather than here.
+
 A key from your ShulGo administrator still pastes into Settings, for anyone who would rather.
 
 ## How the wording is kept honest
