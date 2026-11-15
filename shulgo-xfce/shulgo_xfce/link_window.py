@@ -14,7 +14,7 @@ import threading
 import gi
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import GLib, Gtk, Pango  # noqa: E402
+from gi.repository import GLib, Gio, Gtk, Pango  # noqa: E402
 
 from . import config, link  # noqa: E402
 
@@ -95,6 +95,18 @@ class LinkWindow(Gtk.Window):
     def begin(self):
         if self._working:
             return
+
+        # Before anything else. A machine with no network would otherwise sit on "Asking ShulGo for
+        # a code…" for fifteen seconds and then blame ShulGo, which is both slow and untrue.
+        if not self._connected():
+            self.steps.set_text('No internet connection')
+            self.status.set_text(link.OFFLINE)
+            self.code.set_text('')
+            self.where.set_text('')
+            self.again.set_sensitive(True)
+
+            return
+
         self._working = True
         self.again.set_sensitive(False)
         self.code.set_text('')
@@ -103,6 +115,18 @@ class LinkWindow(Gtk.Window):
         self._stop_timer()
 
         threading.Thread(target=self._do_start, daemon=True).start()
+
+    @staticmethod
+    def _connected():
+        """What the machine says about its own network.
+
+        Taken as true when the question cannot be asked at all: a widget that refuses to try because
+        it could not find a network monitor is worse than one that tries and fails honestly.
+        """
+        try:
+            return Gio.NetworkMonitor.get_default().get_network_available()
+        except Exception:
+            return True
 
     def _do_start(self):
         """Off the main loop. The machine's own name travels so the account page can tell laptops

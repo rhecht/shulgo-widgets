@@ -5,6 +5,7 @@ conversation — and particularly about the answers that are NOT failures, which
 client usually goes wrong: authorization_pending and slow_down are the normal course of events.
 """
 
+import re
 import sys
 import time
 import unittest
@@ -122,6 +123,35 @@ class WhatEachAnswerMeans(unittest.TestCase):
     def test_nothing_at_all_is_an_error_not_a_crash(self):
         self.assertEqual(self.it.absorb(None), link.ERROR)
         self.assertEqual(link.Linking(STARTED).absorb({}), link.ERROR)
+
+
+class TheOfflineWarning(unittest.TestCase):
+    """Said before anything else is attempted, and said the same on every platform.
+
+    link.py and shulgo-core/link.js are twins: the same rules in two languages. A sentence a person
+    reads is exactly the kind of thing that drifts between twins, so this reads the JavaScript and
+    insists the two are word for word.
+    """
+
+    def test_it_says_something_useful(self):
+        self.assertIn('internet', link.OFFLINE.lower())
+        self.assertIn('ShulGo', link.OFFLINE)
+
+    def test_it_matches_the_javascript_word_for_word(self):
+        core = Path(__file__).resolve().parent.parent.parent / 'shulgo-core' / 'link.js'
+        if not core.exists():
+            self.skipTest('shulgo-core/link.js is not beside this checkout')
+
+        text = core.read_text(encoding='utf-8')
+        start = text.index('export const OFFLINE')
+        end = text.index(';', start)
+        # The JS writes it as adjacent quoted pieces joined by +; glue them back together.
+        pieces = re.findall(r"'((?:[^'\\]|\\.)*)'", text[start:end])
+        self.assertTrue(pieces, 'could not read OFFLINE out of link.js')
+        joined = ''.join(pieces).replace("\\'", "'")
+
+        self.assertEqual(joined, link.OFFLINE,
+                         'the offline warning has drifted between link.py and link.js')
 
 
 class WhatThePersonIsTold(unittest.TestCase):

@@ -27,6 +27,13 @@ ERROR = 'error'
 # own interval and matching it keeps the two from arguing.
 SLOW_DOWN_STEP = 5
 
+# What to say when this computer has no internet at all. Checked before anything else is attempted:
+# linking is the one thing in this widget that cannot fall back on what was saved earlier — there is
+# nothing saved yet, that is the point of it — so a fifteen-second wait ending in "ShulGo couldn't
+# be reached" is both slow and misleading on a machine that simply isn't connected.
+OFFLINE = ('This computer isn’t connected to the internet. Connect it and try again — '
+           'linking needs to reach ShulGo.')
+
 
 class Linking:
     """One linking in progress: the codes, the clock, and what the last answer meant."""

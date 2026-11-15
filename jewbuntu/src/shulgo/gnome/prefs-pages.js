@@ -9,7 +9,7 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import { loadApiKey, looksLikeKey, saveApiKey } from './settings.js';
-import { Linking, words, DONE, PENDING } from '../core/link.js';
+import { Linking, words, DONE, OFFLINE, PENDING } from '../core/link.js';
 
 /** An Adw.ComboRow backed by a settings string: labels on screen, values in GSettings. */
 function comboRow({ title, subtitle = null, settings, key, choices }) {
@@ -466,6 +466,20 @@ function linkThisComputer(parent, apiFor, entry) {
     };
 
     (async () => {
+        // Before anything else. Without this the dialog sits on "Asking ShulGo for a code…" for
+        // fifteen seconds and then blames ShulGo for a machine that simply isn't connected.
+        let connected = true;
+        try {
+            connected = Gio.NetworkMonitor.get_default().get_network_available();
+        } catch {
+            // Could not ask: try anyway rather than refuse on a guess.
+        }
+        if (!connected) {
+            dialog.set_body(OFFLINE);
+
+            return;
+        }
+
         const started = await apiFor().deviceStart('ShulGo for GNOME', GLib.get_host_name());
         if (stopped)
             return;

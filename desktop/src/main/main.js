@@ -21,7 +21,7 @@ import { Settings, looksLikeKey } from './settings.js';
 import { hostname } from 'node:os';
 
 import { makeTransport } from './transport.js';
-import { Linking, words, DONE, EXPIRED, PENDING } from '../../shulgo-core/link.js';
+import { Linking, words, DONE, EXPIRED, OFFLINE, PENDING } from '../../shulgo-core/link.js';
 import { Locator } from './location.js';
 import { makeNetwork, makeStorage } from './offline.js';
 
@@ -363,6 +363,12 @@ function registerIpc() {
     let linking = null;
 
     ipcMain.handle('shulgo:linkStart', async () => {
+        // Before anything else. Linking is the one thing here that cannot fall back on what was
+        // saved earlier — there is nothing saved yet — so an unconnected machine should be told
+        // that, not left waiting on a timeout and then told ShulGo is at fault.
+        if (network.isOnline() === false)
+            return { ok: false, message: OFFLINE };
+
         const started = await api.deviceStart('ShulGo for Mac', hostname());
         if (!started.ok)
             return { ok: false, message: started.message };

@@ -26,6 +26,17 @@ export const ERROR = 'error';
  *  keeps the two from arguing about it. */
 export const SLOW_DOWN_STEP = 5;
 
+/**
+ * What to say when this computer has no internet at all.
+ *
+ * Checked before anything else is attempted, and said plainly. Linking is the one thing in these
+ * widgets that cannot fall back on what was saved earlier — there is nothing saved yet, that is the
+ * point of it — so "ShulGo couldn't be reached" after a fifteen-second wait is both slow and
+ * misleading on a machine that simply isn't connected.
+ */
+export const OFFLINE = 'This computer isn’t connected to the internet. Connect it and try again — '
+    + 'linking needs to reach ShulGo.';
+
 export class Linking {
     /** @param {object} started the data from /device/code */
     constructor(started, now = Date.now() / 1000) {
