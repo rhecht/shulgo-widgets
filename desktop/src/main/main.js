@@ -18,7 +18,10 @@ import { Store } from '../../shulgo-core/store.js';
 import * as F from '../../shulgo-core/format.js';
 
 import { Settings, looksLikeKey } from './settings.js';
+import { hostname } from 'node:os';
+
 import { makeTransport } from './transport.js';
+import { Linking, words, DONE, EXPIRED, PENDING } from '../../shulgo-core/link.js';
 import { Locator } from './location.js';
 import { makeNetwork, makeStorage } from './offline.js';
 
@@ -352,6 +355,63 @@ function registerIpc() {
         store.settleTimezone();
         api.forget();
         store.refresh({ fresh: true });
+    });
+
+    /* Linking this computer (RFC 8628). The whole handshake stays in the main process on purpose:
+     * the renderer is told the short code and how it is going, and never sees the device code or
+     * the key itself — the same reason the transport lives here. */
+    let linking = null;
+
+    ipcMain.handle('shulgo:linkStart', async () => {
+        const started = await api.deviceStart('ShulGo for Mac', hostname());
+        if (!started.ok)
+            return { ok: false, message: started.message };
+
+        linking = new Linking(started.data ?? {});
+        if (!linking.usable) {
+            linking = null;
+
+            return { ok: false, message: 'ShulGo sent an answer this app couldn’t use.' };
+        }
+
+        return {
+            ok: true,
+            userCode: linking.userCode,
+            verificationUri: linking.verificationUri,
+            interval: linking.interval,
+            words: words(PENDING, linking),
+        };
+    });
+
+    ipcMain.handle('shulgo:linkPoll', async () => {
+        if (!linking)
+            return { state: 'error', words: 'Nothing is being linked.' };
+        if (linking.expired())
+            return { state: EXPIRED, words: words(EXPIRED, linking) };
+
+        const state = linking.absorb(await api.devicePoll(linking.deviceCode));
+
+        if (state === DONE) {
+            // The key is saved here and goes no further: the renderer learns only that it worked.
+            settings.apiKey = linking.key;
+            api.reconfigure({ apiKey: linking.key });
+            linking = null;
+            store.refresh({ fresh: true });
+
+            return { state, words: words(state, null) };
+        }
+
+        const answer = { state, words: words(state, linking), interval: linking.interval };
+        if (state !== PENDING)
+            linking = null;
+
+        return answer;
+    });
+
+    ipcMain.handle('shulgo:linkStop', () => {
+        linking = null;
+
+        return { ok: true };
     });
 
     ipcMain.handle('shulgo:setKey', async (_event, key, { remove = false } = {}) => {

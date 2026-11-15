@@ -153,6 +153,51 @@ export class ShulGoApi {
         return this._get('shiurim', query);
     }
 
+    // ---- linking this computer, which is how a key is got in the first place -----------------
+
+    /**
+     * Begin "link this computer" (RFC 8628 §3.1). Answers a short code to show and a device code to
+     * poll with.
+     *
+     * Deliberately not through _get: these two carry no API key — being how a machine gets one —
+     * and must never be cached or answered from what was written down for offline use.
+     */
+    deviceStart(clientName, deviceName = '') {
+        return this._post('device/code', { client_name: clientName, device_name: deviceName || '' });
+    }
+
+    /**
+     * Ask whether it has been approved yet (RFC 8628 §3.4).
+     *
+     * authorization_pending and slow_down come back with a 200 and an error code, which _answer
+     * turns into {ok: false, code}. Those are the normal course of events, not failures.
+     */
+    devicePoll(deviceCode) {
+        return this._post('device/token', { device_code: deviceCode });
+    }
+
+    /** An unauthenticated POST: no key, no cache, no offline fallback. */
+    async _post(path, body) {
+        let answer;
+        try {
+            answer = await this._transport(`${this._base}/${path}`, {
+                method: 'POST',
+                body,
+                headers: { Accept: 'application/json' },
+                timeout: this._timeout,
+            });
+        } catch (e) {
+            return {
+                ok: false,
+                code: e?.code === 'timeout' ? 'timeout' : 'network',
+                message: e?.message || FALLBACK,
+                status: 0,
+            };
+        }
+
+        return this._answer(answer);
+    }
+
     /** Cities, neighborhoods and zip codes, for the place box. */
     places(q) {
         const text = String(q || '').trim();
@@ -302,6 +347,11 @@ export class ShulGoApi {
             };
         }
 
+        return this._answer(answer);
+    }
+
+    /** Turn a transport answer into the {ok} shape, the same way for a GET and a POST. */
+    _answer(answer) {
         const status = Number(answer?.status ?? 0);
         let body = {};
         try {
@@ -322,6 +372,8 @@ export class ShulGoApi {
             code: err.code || `http_${status}`,
             message: err.message || this._httpMessage(status),
             retryAfter,
+            // RFC 8628 sends the polling interval back with slow_down; the linking code needs it.
+            ...(Number.isFinite(err.interval) ? { interval: err.interval } : {}),
         };
     }
 

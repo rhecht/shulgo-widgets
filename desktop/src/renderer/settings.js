@@ -151,6 +151,69 @@ $('resetBase').addEventListener('click', () => {
     apply({ apiBaseUrl: 'https://shulgo.com/api/v1' });
 });
 
+/* Linking this computer (RFC 8628). The handshake itself lives in the main process — this only
+ * shows the code and asks how it is going, and never learns the device code or the key. */
+let linkTimer = null;
+
+function stopLinking(message) {
+    if (linkTimer) {
+        clearTimeout(linkTimer);
+        linkTimer = null;
+    }
+    window.shulgo.linkStop();
+    if (message !== undefined)
+        $('linkStatus').textContent = message;
+}
+
+async function askLink() {
+    linkTimer = null;
+    const answer = await window.shulgo.linkPoll();
+    $('linkStatus').textContent = answer.words ?? '';
+
+    if (answer.state === 'pending') {
+        linkTimer = setTimeout(askLink, Math.max(1, answer.interval ?? 5) * 1000);
+
+        return;
+    }
+
+    $('linkCode').textContent = '';
+    if (answer.state === 'done') {
+        $('linkWhere').textContent = '';
+        $('keyStatus').className = 'status good';
+        $('keyStatus').textContent = 'Linked. This computer has its own key now.';
+        setTimeout(() => { $('linkBox').hidden = true; }, 2500);
+    }
+}
+
+$('linkComputer').addEventListener('click', async () => {
+    stopLinking();
+    $('linkBox').hidden = false;
+    $('linkCode').textContent = '';
+    $('linkWhere').textContent = '';
+    $('linkStatus').textContent = 'Asking ShulGo for a code…';
+
+    const started = await window.shulgo.linkStart();
+    if (!started.ok) {
+        $('linkStatus').textContent = started.message || 'ShulGo couldn’t be reached.';
+
+        return;
+    }
+
+    $('linkWhere').textContent = `On your phone, open ${started.verificationUri} and type this code:`;
+    $('linkCode').textContent = started.userCode;
+    $('linkStatus').textContent = started.words ?? '';
+    linkTimer = setTimeout(askLink, Math.max(1, started.interval ?? 5) * 1000);
+});
+
+$('linkCancel').addEventListener('click', () => {
+    stopLinking('Stopped.');
+    $('linkCode').textContent = '';
+    $('linkBox').hidden = true;
+});
+
+// A window that goes away mid-linking should not leave one half-done on the other side.
+window.addEventListener('beforeunload', () => stopLinking());
+
 $('quit').addEventListener('click', () => window.shulgo.quit());
 
 window.shulgo.onState((next) => {

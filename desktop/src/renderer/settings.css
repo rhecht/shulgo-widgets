@@ -221,3 +221,23 @@ footer button {
 footer button:hover {
   background: rgba(255, 138, 128, 0.24);
 }
+
+/* Linking this computer: the code is read from wherever the phone is, so it is the biggest thing
+   in the window while it is on screen. */
+.link-box {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(143, 179, 234, 0.08);
+  border: 1px solid rgba(143, 179, 234, 0.22);
+}
+
+.link-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 8px 0;
+  color: var(--gold-light);
+  user-select: text;
+}

@@ -7,13 +7,21 @@
 /**
  * @param {object} [opts]
  * @param {string} [opts.userAgent]
- * @returns {(url: string, opts: {headers?: object, timeout?: number}) => Promise<{status: number, body: string, headers: {get: (name: string) => string|null}}>}
+ * @returns {(url: string, opts: {headers?: object, timeout?: number, method?: string, body?: any}) => Promise<{status: number, body: string, headers: {get: (name: string) => string|null}}>}
  */
 export function makeTransport({ userAgent = 'ShulGo-Desktop/1.0' } = {}) {
-    return async function get(url, { headers = {}, timeout = 15 } = {}) {
+    return async function get(url, { headers = {}, timeout = 15, method = 'GET', body = null } = {}) {
         try {
+            const sending = body !== null && body !== undefined;
             const response = await fetch(url, {
-                headers: { ...headers, 'User-Agent': userAgent },
+                method,
+                // Only device linking posts anything, and it posts JSON.
+                ...(sending ? { body: typeof body === 'string' ? body : JSON.stringify(body) } : {}),
+                headers: {
+                    ...headers,
+                    ...(sending ? { 'Content-Type': 'application/json' } : {}),
+                    'User-Agent': userAgent,
+                },
                 signal: AbortSignal.timeout(timeout * 1000),
                 redirect: 'follow',
             });

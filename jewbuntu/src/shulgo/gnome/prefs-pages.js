@@ -9,6 +9,7 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import { loadApiKey, looksLikeKey, saveApiKey } from './settings.js';
+import { Linking, words, DONE, PENDING } from '../core/link.js';
 
 /** An Adw.ComboRow backed by a settings string: labels on screen, values in GSettings. */
 function comboRow({ title, subtitle = null, settings, key, choices }) {
@@ -294,8 +295,16 @@ export function accountPage(settings, apiFor) {
     });
     page.add(group);
 
-    // No "ask ShulGo for a key" row here on purpose. Keys come from a ShulGo administrator, and a
-    // button to a public request form told people something different from every other screen.
+    // How somebody without a key gets one: linking, rather than typing forty characters somebody
+    // emailed them. The row sits above the key box because it is the easier of the two paths.
+    const link = new Adw.ActionRow({
+        title: 'Link this computer',
+        subtitle: 'Shows a short code to approve on your phone',
+        activatable: true,
+    });
+    link.add_suffix(new Gtk.Image({ icon_name: 'go-next-symbolic' }));
+    link.connect('activated', () => linkThisComputer(link.get_root(), apiFor, entry));
+    group.add(link);
 
     const entry = new Adw.PasswordEntryRow({ title: 'Key', text: loadApiKey() });
     group.add(entry);
@@ -383,3 +392,108 @@ export function accountPage(settings, apiFor) {
     return page;
 }
 
+
+
+/**
+ * "Link this computer" — the phone-approves-it flow, RFC 8628.
+ *
+ * The rules about what each answer means are in core/link.js, shared with the Mac build and twinned
+ * in Python for the Xfce one. This function is the dialog and the clock, and decides only when to
+ * ask — never what the answer meant.
+ */
+function linkThisComputer(parent, apiFor, entry) {
+    const dialog = new Adw.MessageDialog({
+        transient_for: parent,
+        modal: true,
+        heading: 'Link this computer',
+        body: 'Asking ShulGo for a code…',
+    });
+    dialog.add_response('close', 'Close');
+
+    const code = new Gtk.Label({ selectable: true, margin_top: 8, margin_bottom: 8 });
+    code.add_css_class('title-1');
+    dialog.set_extra_child(code);
+
+    let linking = null;
+    let timer = 0;
+    let stopped = false;
+
+    const stop = () => {
+        stopped = true;
+        if (timer) {
+            GLib.Source.remove(timer);
+            timer = 0;
+        }
+    };
+    dialog.connect('response', stop);
+    dialog.connect('close-request', stop);
+
+    const settle = (state) => {
+        stop();
+        dialog.set_body(words(state, linking));
+        if (state === DONE) {
+            code.set_text('');
+            // Straight into the box, so the window is not quietly out of date behind the dialog.
+            entry.text = loadApiKey();
+        }
+    };
+
+    const ask = async () => {
+        if (stopped)
+            return;
+        if (linking.expired()) {
+            settle('expired');
+
+            return;
+        }
+
+        const state = linking.absorb(await apiFor().devicePoll(linking.deviceCode));
+        if (stopped)
+            return;
+        if (state !== PENDING) {
+            settle(state);
+
+            return;
+        }
+
+        dialog.set_body(words(state, linking));
+        timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, linking.interval, () => {
+            timer = 0;
+            ask().catch(logError);
+
+            return GLib.SOURCE_REMOVE;
+        });
+    };
+
+    (async () => {
+        const started = await apiFor().deviceStart('ShulGo for GNOME', GLib.get_host_name());
+        if (stopped)
+            return;
+        if (!started.ok) {
+            dialog.set_body(started.message || 'ShulGo couldn’t be reached.');
+
+            return;
+        }
+
+        linking = new Linking(started.data ?? {});
+        if (!linking.usable) {
+            dialog.set_body('ShulGo sent an answer this widget couldn’t use.');
+
+            return;
+        }
+
+        dialog.set_body(`On your phone, open ${linking.verificationUri} and type this code:`);
+        code.set_text(linking.userCode);
+        timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, linking.interval, () => {
+            timer = 0;
+            ask().catch(logError);
+
+            return GLib.SOURCE_REMOVE;
+        });
+    })().catch((e) => {
+        logError(e, 'ShulGo: linking failed');
+        dialog.set_body('ShulGo couldn’t be reached.');
+    });
+
+    dialog.present();
+}

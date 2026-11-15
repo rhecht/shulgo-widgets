@@ -102,8 +102,16 @@
 
     <section>
       <h2>API key</h2>
-      <p class="hint">Ask your ShulGo administrator for a key. It is kept in a file only you can
-        read, and never in this window.</p>
+      <p class="hint">Link this computer and a short code appears to approve on your phone — nothing
+        long to copy. Or ask your ShulGo administrator for a key and paste it below. Either way it is
+        kept in a file only you can read, and never in this window.</p>
+      <button id="linkComputer">Link this computer…</button>
+      <div class="link-box" id="linkBox" hidden>
+        <p class="hint" id="linkWhere"></p>
+        <div class="link-code" id="linkCode"></div>
+        <div class="status" id="linkStatus"></div>
+        <button id="linkCancel">Stop</button>
+      </div>
       <div class="search">
         <input type="password" id="apiKey" placeholder="sg_live_…" autocomplete="off" spellcheck="false">
         <button class="primary" id="saveKey">Save and test</button>

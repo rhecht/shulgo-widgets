@@ -27,4 +27,8 @@ contextBridge.exposeInMainWorld('shulgo', {
     setPlace: (match) => ipcRenderer.invoke('shulgo:setPlace', match),
     settleTimezone: () => ipcRenderer.invoke('shulgo:settleTimezone'),
     setKey: (key, options) => ipcRenderer.invoke('shulgo:setKey', key, options),
+    // Linking: the renderer gets the short code and how it is going, never the device code or the key.
+    linkStart: () => ipcRenderer.invoke('shulgo:linkStart'),
+    linkPoll: () => ipcRenderer.invoke('shulgo:linkPoll'),
+    linkStop: () => ipcRenderer.invoke('shulgo:linkStop'),
 });

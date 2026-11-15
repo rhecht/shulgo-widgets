@@ -12,13 +12,13 @@ Gio._promisify(Soup.Session.prototype, 'send_and_read_async', 'send_and_read_fin
 /**
  * @param {object} [opts]
  * @param {string} [opts.userAgent]
- * @returns {(url: string, opts: {headers?: object, timeout?: number}) => Promise<{status: number, body: string, headers: {get: (name: string) => string|null}}>}
+ * @returns {(url: string, opts: {headers?: object, timeout?: number, method?: string, body?: any}) => Promise<{status: number, body: string, headers: {get: (name: string) => string|null}}>}
  */
 export function makeTransport({ userAgent = 'JewBuntu-ShulGo/1.0' } = {}) {
     const session = new Soup.Session({ timeout: 15, user_agent: userAgent });
 
-    return async function get(url, { headers = {}, timeout = 15 } = {}) {
-        const message = Soup.Message.new('GET', url);
+    return async function get(url, { headers = {}, timeout = 15, method = 'GET', body = null } = {}) {
+        const message = Soup.Message.new(method, url);
         if (!message) {
             const error = new Error(`Not a usable API address: ${url}`);
             error.code = 'bad_url';
@@ -27,6 +27,12 @@ export function makeTransport({ userAgent = 'JewBuntu-ShulGo/1.0' } = {}) {
 
         for (const [name, value] of Object.entries(headers))
             message.request_headers.append(name, String(value));
+
+        // Only device linking posts anything, and it posts JSON. Everything else here is a GET.
+        if (body !== null && body !== undefined) {
+            const bytes = new TextEncoder().encode(typeof body === 'string' ? body : JSON.stringify(body));
+            message.set_request_body_from_bytes('application/json', new GLib.Bytes(bytes));
+        }
 
         // Soup's own timeout can sit on a half-open socket, so cancel by hand as well.
         const cancellable = new Gio.Cancellable();
