@@ -61,6 +61,22 @@ export class Linking {
         return Boolean(this.deviceCode && this.userCode);
     }
 
+    /**
+     * Move our deadline to the server's, when it sends one. True when it really changed.
+     *
+     * A second either way is the round trip rather than a new deadline, so only a real move counts.
+     */
+    takeDeadline(expiresIn, now = Date.now() / 1000) {
+        const seconds = Number(expiresIn);
+        if (!Number.isFinite(seconds) || seconds <= 0)
+            return false;
+
+        const was = this.expiresAt;
+        this.expiresAt = now + seconds;
+
+        return Math.abs(this.expiresAt - was) > 5;
+    }
+
     secondsLeft(now = Date.now() / 1000) {
         return Math.max(0, Math.floor(this.expiresAt - now));
     }
@@ -104,8 +120,13 @@ export class Linking {
             // administrator" — both are authorization_pending in RFC 8628's vocabulary, and the
             // person watching deserves to know which. A network blip carries no message and leaves
             // whatever was last said standing.
-            if (code === 'authorization_pending')
+            if (code === 'authorization_pending') {
                 this.waiting = got.message || null;
+                // The deadline MOVES: approving your own device pushes it from twenty minutes to
+                // three days, and a client holding the first figure decides the code is dead while
+                // the server still has it alive. The server's figure wins whenever it sends one.
+                this.takeDeadline(got.expires_in);
+            }
 
             return PENDING;
         }

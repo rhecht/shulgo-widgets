@@ -329,13 +329,9 @@ class ShulGoTray:
         if self._pending is None:
             return False
 
-        if self._pending.expired():
-            config.clear_pending()
-            self._pending = None
-            self._draw()
-
-            return False
-
+        # Deliberately NOT "if expired, give up". Our deadline is the last one the server told us,
+        # and it moves; asking is cheap and the answer is authoritative. expired_token is what ends
+        # this, below.
         threading.Thread(target=self._do_poll_pending,
                          args=(self._pending.device_code,), daemon=True).start()
 
@@ -350,6 +346,10 @@ class ShulGoTray:
 
         state = self._pending.absorb(answer)
         if state == link.PENDING:
+            # Keep the written-down deadline in step with the server's, so a restart does not read
+            # a stale one and give up on a linking that is still alive.
+            config.save_pending(self._pending.device_code, self._pending.user_code,
+                                self._pending.expires_at, self._pending.interval)
             self._pending_timer = GLib.timeout_add_seconds(max(1, self._pending.interval),
                                                            self._poll_pending)
             self._draw()

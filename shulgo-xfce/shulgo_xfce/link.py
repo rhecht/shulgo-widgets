@@ -77,6 +77,25 @@ class Linking:
         """A linking with no device code is not one; say so rather than poll nothing forever."""
         return bool(self.device_code and self.user_code)
 
+    def take_deadline(self, expires_in, now=None):
+        """Move our deadline to the server's, when it sends one. Returns True if it changed.
+
+        Only ever outwards in practice, but written to follow the server either way: it is the one
+        that knows, and a widget's own clock on an old laptop is not evidence.
+        """
+        try:
+            seconds = int(expires_in)
+        except (TypeError, ValueError):
+            return False
+        if seconds <= 0:
+            return False
+
+        was = self.expires_at
+        self.expires_at = (time.time() if now is None else now) + seconds
+
+        # A second either way is the round trip, not a new deadline; only say so when it is real.
+        return abs(self.expires_at - was) > 5
+
     def seconds_left(self, now=None):
         return max(0, int(self.expires_at - (time.time() if now is None else now)))
 
@@ -119,6 +138,11 @@ class Linking:
             # whatever was last said standing.
             if code == 'authorization_pending':
                 self.waiting = answer.get('message') or None
+                # The deadline MOVES. Approving your own device pushes it from twenty minutes to
+                # three days, and a client holding the first figure decides the code is dead while
+                # the server still has it alive — which is exactly how a real pair of approvals was
+                # thrown away. So the server's figure wins whenever it sends one.
+                self.take_deadline(answer.get('expires_in'))
 
             return PENDING
 

@@ -62,6 +62,11 @@ def settings_path():
     return os.path.join(_config_dir(), 'shulgo-xfce.conf')
 
 
+# How far past its last known deadline a linking has to be before we give up on it without asking.
+# The server's own longest wait is three days; a month past that is a file nothing will ever resolve.
+ABANDONED_AFTER = 30 * 86400
+
+
 def pending_path():
     """~/.config/jewbuntu/shulgo-xfce-linking.conf — a linking that has not finished yet.
 
@@ -104,8 +109,15 @@ def load_pending():
     except (TypeError, ValueError):
         return None
 
-    # Expired is the same as absent, and the file goes: nothing can be done with it any more.
-    if expires_at <= time.time():
+    # NOT deleted merely because our own clock says so. Expiry is the server's to declare: the
+    # deadline moves when somebody approves their own device — twenty minutes becomes three days —
+    # and a file written before that move looks expired while the server still has it alive. Acting
+    # on the local figure threw away a real pair of approvals. One poll settles it honestly, and the
+    # answer to expired_token is what deletes this.
+    #
+    # The backstop is for a file that can never be polled at all — a machine off the network for a
+    # month — rather than for one that is merely past its last known deadline.
+    if expires_at + ABANDONED_AFTER <= time.time():
         clear_pending()
 
         return None

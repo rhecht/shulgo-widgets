@@ -256,15 +256,23 @@ class ALinkingThatOutlivesItsWindow(unittest.TestCase):
             mode = stat.S_IMODE(os.stat(config.pending_path()).st_mode)
             self.assertEqual(mode, 0o600)
 
-    def test_one_that_ran_out_is_the_same_as_none_and_is_tidied_away(self):
+    def test_our_own_deadline_no_longer_declares_it_dead(self):
+        """This test used to assert the opposite, and the opposite was wrong.
+
+        It said a file one second past its recorded deadline should be deleted on sight. But that
+        deadline moves — approving your own device turns twenty minutes into three days — so a file
+        written before the move looks expired while the server still has the code alive. Acting on
+        the local figure is what threw away a second pair of approvals on a real machine.
+
+        The file now survives to be asked about; `expired_token` from the server is what ends it.
+        """
         import os
         from shulgo_xfce import config
 
         with InATemporaryHome():
             config.save_pending('c' * 64, 'AAAA-BBBB', time.time() - 1, 5)
-            self.assertIsNone(config.load_pending())
-            self.assertFalse(os.path.exists(config.pending_path()),
-                             'nothing can be done with it, so it should not linger')
+            self.assertIsNotNone(config.load_pending())
+            self.assertTrue(os.path.exists(config.pending_path()))
 
     def test_clearing_it_is_safe_when_there_is_nothing_there(self):
         from shulgo_xfce import config
@@ -289,3 +297,83 @@ class ALinkingThatOutlivesItsWindow(unittest.TestCase):
         self.assertEqual(it.absorb({'ok': True, 'data': {'api_key': 'sg_live_' + 'ab12cd34' * 5}}),
                          link.DONE)
         self.assertTrue(it.key.startswith('sg_live_'))
+
+
+class TheDeadlineThatMoves(unittest.TestCase):
+    """The exact sequence that lost a second pair of approvals on the Pentium III.
+
+    A code is written down with a twenty-minute deadline. The person approves on their phone, and
+    the server quietly extends it to three days. The window is closed. The tray reads the file, sees
+    the OLD deadline already past, calls it expired and deletes it — so nobody ever polls again, and
+    the administrator's approval goes nowhere.
+
+    Two things had to change: the server now sends the deadline with every pending answer, and the
+    local clock no longer gets to declare a linking dead on its own.
+    """
+
+    def test_a_pending_answer_moves_the_deadline(self):
+        it = link.Linking(STARTED)
+        was = it.seconds_left()
+        self.assertLessEqual(was, 600)
+
+        it.absorb({'ok': False, 'code': 'authorization_pending',
+                   'message': 'Waiting for a ShulGo administrator…', 'expires_in': 259200})
+
+        self.assertGreater(it.seconds_left(), 259000, 'three days, as the server now says')
+        self.assertFalse(it.expired())
+
+    def test_a_deadline_that_has_not_really_moved_is_not_a_move(self):
+        it = link.Linking(STARTED)
+        self.assertFalse(it.take_deadline(600), 'the same figure, give or take a round trip')
+        self.assertTrue(it.take_deadline(259200))
+
+    def test_nonsense_leaves_the_deadline_alone(self):
+        it = link.Linking(STARTED)
+        before = it.expires_at
+        for bad in (None, '', 'soon', 0, -5):
+            self.assertFalse(it.take_deadline(bad))
+        self.assertEqual(it.expires_at, before)
+
+    def test_the_whole_sequence_end_to_end(self):
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            # 1. the window starts a linking and writes it down
+            it = link.Linking(STARTED)
+            config.save_pending(it.device_code, it.user_code, it.expires_at, it.interval)
+
+            # 2. the person approves on their phone; the server extends the deadline and says so
+            it.absorb({'ok': False, 'code': 'authorization_pending',
+                       'message': 'Waiting for a ShulGo administrator…', 'expires_in': 259200})
+            config.save_pending(it.device_code, it.user_code, it.expires_at, it.interval)
+
+            # 3. the window is closed. The tray reads the file — and must still find a linking.
+            saved = config.load_pending()
+            self.assertIsNotNone(saved, 'this is where it used to vanish')
+            resumed = link.Linking.resume(saved)
+            self.assertTrue(resumed.usable)
+            self.assertFalse(resumed.expired())
+
+            # 4. the administrator approves, and the next poll collects the key
+            self.assertEqual(resumed.absorb({'ok': True, 'data': {'api_key': 'sg_live_' + 'ab12cd34' * 5}}),
+                             link.DONE)
+            self.assertTrue(resumed.key.startswith('sg_live_'))
+
+    def test_a_stale_file_survives_long_enough_to_be_asked_about(self):
+        """The server decides expiry, not us. A file past its last known deadline is still worth
+        one poll — that deadline may simply be out of date."""
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            config.save_pending('a' * 64, 'AAAA-BBBB', time.time() - 3600, 5)
+            self.assertIsNotNone(config.load_pending(),
+                                 'an hour past our own figure is not evidence of anything')
+
+    def test_but_one_nothing_will_ever_resolve_is_tidied_away(self):
+        import os
+        from shulgo_xfce import config
+
+        with InATemporaryHome():
+            config.save_pending('a' * 64, 'AAAA-BBBB', time.time() - (40 * 86400), 5)
+            self.assertIsNone(config.load_pending())
+            self.assertFalse(os.path.exists(config.pending_path()))

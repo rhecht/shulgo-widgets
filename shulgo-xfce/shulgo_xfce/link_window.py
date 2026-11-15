@@ -203,6 +203,11 @@ class LinkWindow(Gtk.Window):
 
         state = self.linking.absorb(answer)
         if state == link.PENDING:
+            # absorb() may have moved the deadline — three days instead of twenty minutes, once
+            # somebody approves their own device. Write that down, or the tray will read the old
+            # figure after this window closes and conclude the code is dead.
+            config.save_pending(self.linking.device_code, self.linking.user_code,
+                                self.linking.expires_at, self.linking.interval)
             self.status.set_text(link.words(state, self.linking))
             self._arm()
 
