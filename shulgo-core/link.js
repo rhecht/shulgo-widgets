@@ -83,8 +83,16 @@ export class Linking {
 
             return PENDING;
         }
-        if (code === 'authorization_pending' || code === 'network' || code === 'timeout')
+        if (code === 'authorization_pending' || code === 'network' || code === 'timeout') {
+            // The server distinguishes "nobody has approved this yet" from "waiting for a ShulGo
+            // administrator" — both are authorization_pending in RFC 8628's vocabulary, and the
+            // person watching deserves to know which. A network blip carries no message and leaves
+            // whatever was last said standing.
+            if (code === 'authorization_pending')
+                this.message = got.message || null;
+
             return PENDING;
+        }
 
         if (code === 'access_denied') {
             this.message = 'That request was turned down on the phone.';
@@ -113,6 +121,10 @@ export function words(state, linking) {
         return linking?.message ?? 'That code has run out. Start again.';
     if (state === ERROR)
         return linking?.message ?? 'Something went wrong.';
+
+    // Whatever the server last said about why we are waiting, when it said anything.
+    if (linking?.message)
+        return linking.message;
 
     const left = linking?.secondsLeft() ?? 0;
     if (left > 60)

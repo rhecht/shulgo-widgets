@@ -83,6 +83,13 @@ class Linking:
             return PENDING
 
         if code in ('authorization_pending', 'network', 'timeout'):
+            # The server distinguishes "nobody has approved this yet" from "waiting for a ShulGo
+            # administrator" — both are authorization_pending in RFC 8628's vocabulary, and the
+            # person watching deserves to know which. A network blip carries no message and leaves
+            # whatever was last said standing.
+            if code == 'authorization_pending':
+                self.message = answer.get('message') or None
+
             return PENDING
 
         if code == 'access_denied':
@@ -110,6 +117,10 @@ def words(state, linking):
         return linking.message or 'That code has run out. Start again.'
     if state == ERROR:
         return linking.message or 'Something went wrong.'
+
+    # Whatever the server last said about why we are waiting, when it said anything.
+    if linking.message:
+        return linking.message
 
     left = linking.seconds_left()
     if left > 60:

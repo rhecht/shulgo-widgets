@@ -92,6 +92,22 @@ class WhatEachAnswerMeans(unittest.TestCase):
         self.assertEqual(link.Linking(STARTED).absorb({'ok': False, 'code': 'invalid_grant'}),
                          link.EXPIRED)
 
+    def test_it_says_which_approval_it_is_waiting_on(self):
+        """Both are authorization_pending; only the server knows which half is outstanding."""
+        self.it.absorb({'ok': False, 'code': 'authorization_pending',
+                        'message': 'Waiting for a ShulGo administrator to approve this computer.'})
+        self.assertIn('administrator', link.words(link.PENDING, self.it))
+
+    def test_a_blip_does_not_wipe_what_the_server_last_said(self):
+        self.it.absorb({'ok': False, 'code': 'authorization_pending',
+                        'message': 'Waiting for a ShulGo administrator.'})
+        self.it.absorb({'ok': False, 'code': 'network'})
+        self.assertIn('administrator', link.words(link.PENDING, self.it))
+
+    def test_without_a_reason_it_counts_down_as_before(self):
+        self.it.absorb({'ok': False, 'code': 'authorization_pending'})
+        self.assertIn('minutes left', link.words(link.PENDING, self.it))
+
     def test_a_dropped_network_keeps_trying_rather_than_abandoning_it(self):
         """Somebody is at their phone halfway through approving this. A sleeping WiFi card is not a
         reason to throw that away — the code's own expiry ends it soon enough."""
