@@ -49,18 +49,25 @@ class LinkWindow(Gtk.Window):
         self.steps.set_max_width_chars(46)
         box.add(self.steps)
 
-        # The code itself, big. This is read from across a room and typed on a phone, which is the
-        # whole reason the alphabet has no O, 0, I or 1 in it.
-        self.code = Gtk.Label(label='')
-        self.code.set_selectable(True)
-        self.code.override_font(Pango.FontDescription('Monospace Bold 26'))
-        box.add(self.code)
-
+        # Order matters here and I got it wrong first time: the code went into the box BEFORE the
+        # line introducing it, so the window read "…open" / CODE / "https://… and type this code:",
+        # with the sentence cut in half by the thing it was describing. Found by somebody reading it
+        # on the screen it was built for; no test here could have seen it.
         self.where = Gtk.Label()
         self.where.set_xalign(0.0)
         self.where.set_line_wrap(True)
         self.where.set_selectable(True)
         box.add(self.where)
+
+        # The code itself, big. This is read from across a room and typed on a phone, which is the
+        # whole reason the alphabet has no O, 0, I or 1 in it.
+        self.code = Gtk.Label(label='')
+        self.code.set_selectable(True)
+        # Selectable so it can be copied, but not focusable: with focus it draws a text caret at the
+        # left edge and looks like a box you are meant to type into, which is the opposite of true.
+        self.code.set_can_focus(False)
+        self.code.override_font(Pango.FontDescription('Monospace Bold 26'))
+        box.add(self.code)
 
         self.status = Gtk.Label(label='')
         self.status.set_xalign(0.0)
@@ -124,6 +131,7 @@ class LinkWindow(Gtk.Window):
         self.where.set_markup('<b>%s</b>\n\nand type this code:'
                               % GLib.markup_escape_text(self.linking.verification_uri))
         self.code.set_text(self.linking.user_code)
+        # Reads, top to bottom: "…open" / the address / "and type this code:" / the code.
         self.status.set_text(link.words(link.PENDING, self.linking))
         self._arm()
 
