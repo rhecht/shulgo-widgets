@@ -142,9 +142,19 @@ class Cache:
         self.save()
 
 
-def _http(url, headers, timeout):
-    """One GET. Returns (status, body_text). Raises only what the caller turns into a failure dict."""
-    request = urllib.request.Request(url, headers=headers, method='GET')
+def _http(url, headers, timeout, body=None):
+    """One request. Returns (status, body_text, headers). Raises only what the caller turns into a
+    failure dict.
+
+    A body makes it a POST, which only the device-linking calls use. Everything else in this API is
+    a GET.
+    """
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode('utf-8')
+        headers = dict(headers, **{'Content-Type': 'application/json'})
+    request = urllib.request.Request(url, data=data, headers=headers,
+                                     method='POST' if data is not None else 'GET')
     # No proxy handler and no cookie jar: this talks to one host and wants nothing remembered.
     opener = urllib.request.build_opener(urllib.request.HTTPSHandler())
     try:
@@ -214,6 +224,47 @@ class ShulGoApi:
         has nowhere to type.
         """
         return self._get('shiurim', {'lat': lat, 'lng': lng, 'page': page})
+
+    # ---- linking this computer, which is how a key is got in the first place -----------------
+
+    def device_start(self, client_name, device_name=None):
+        """Begin "link this computer". Answers a short code to show and a device code to poll with.
+
+        Deliberately not through _get: these two calls carry no API key — they are how a machine
+        gets one — and must never be cached or answered from the offline copy.
+        """
+        return self._post('device/code', {
+            'client_name': client_name,
+            'device_name': device_name or '',
+        })
+
+    def device_poll(self, device_code):
+        """Ask whether it has been approved yet.
+
+        The server answers RFC 8628's vocabulary: authorization_pending and slow_down come back with
+        a 200 and an error code, which _fetch already turns into {ok: False, code: ...} — those are
+        the normal course of events, not failures.
+        """
+        return self._post('device/token', {'device_code': device_code})
+
+    def _post(self, path, payload):
+        """An unauthenticated POST. No key, no cache, no offline fallback."""
+        try:
+            status, body_text, head = _http('%s/%s' % (self._base, path), {
+                'Accept': 'application/json',
+                'User-Agent': 'ShulGo-Xfce/1.0',
+            }, self._timeout, payload)
+        except socket.timeout:
+            return {'ok': False, 'code': 'timeout', 'message': FALLBACK, 'status': 0}
+        except (urllib.error.URLError, OSError) as e:
+            reason = getattr(e, 'reason', None)
+            if isinstance(reason, socket.timeout):
+                return {'ok': False, 'code': 'timeout', 'message': FALLBACK, 'status': 0}
+
+            return {'ok': False, 'code': 'network', 'message': str(reason or e) or FALLBACK,
+                    'status': 0}
+
+        return self._read(status, body_text, head)
 
     def places(self, text):
         """Cities, neighborhoods and zip codes, for the place box."""
@@ -326,6 +377,10 @@ class ShulGoApi:
             return {'ok': False, 'code': 'network', 'message': str(reason or e) or FALLBACK,
                     'status': 0}
 
+        return self._read(status, body_text, head)
+
+    def _read(self, status, body_text, head):
+        """Turn an answer into the {ok: ...} shape, the same way for a GET and a POST."""
         try:
             body = json.loads(body_text) if body_text else {}
         except ValueError:
@@ -343,13 +398,18 @@ class ShulGoApi:
         except (TypeError, ValueError):
             retry_after = None
 
-        return {
+        answer = {
             'ok': False,
             'status': status,
             'code': err.get('code') or ('http_%d' % status),
             'message': err.get('message') or self._http_message(status),
             'retryAfter': retry_after,
         }
+        # RFC 8628 sends the polling interval back with slow_down; the linking code needs it.
+        if isinstance(err.get('interval'), int):
+            answer['interval'] = err['interval']
+
+        return answer
 
     @staticmethod
     def _http_message(status):

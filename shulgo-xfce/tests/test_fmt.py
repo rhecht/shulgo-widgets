@@ -20,7 +20,10 @@ Not compared against the JavaScript, on purpose, and tested separately below:
 
 import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -73,13 +76,56 @@ class SameWordsAsTheJavaScript(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.spec = json.loads((HERE / 'cases.json').read_text(encoding='utf-8'))
+        cls.expected = cls._fresh() or cls._committed()
+
+    @classmethod
+    def _fresh(cls):
+        """Run the real format.js now, if node is here, and compare against that.
+
+        The committed expected.json was the whole fixture at first, and it rotted the moment the
+        date changed: eventDate's cases are relative to today, so answers generated yesterday say
+        "Tue, Nov 17" while both languages now say "Wed, Nov 18". Making the INPUTS relative was only
+        half the fix — the expectations have to be worked out on the same day too.
+
+        So where node is available this generates them afresh, into a temporary file rather than over
+        the committed one, and the comparison is always against today's truth.
+        """
+        generator = HERE / 'make-expected.mjs'
+        if not generator.exists() or not shutil.which('node'):
+            return None
+
+        out = Path(tempfile.mkdtemp(prefix='shulgo-fmt-')) / 'expected.json'
+        try:
+            subprocess.run(
+                ['node', str(generator), ],
+                cwd=str(HERE), check=True, capture_output=True,
+                env=dict(os.environ, SHULGO_EXPECTED_OUT=str(out)),
+                timeout=60,
+            )
+
+            return json.loads(out.read_text(encoding='utf-8'))
+        except (subprocess.SubprocessError, OSError, ValueError):
+            return None
+
+    @classmethod
+    def _committed(cls):
         path = HERE / 'expected.json'
         if not path.exists():
             raise unittest.SkipTest(
-                'tests/expected.json is missing. Generate it with:\n'
+                'tests/expected.json is missing and node is not here to generate it. Run:\n'
                 '  cd integrations/shulgo-xfce/tests && TZ=America/Toronto node make-expected.mjs'
             )
-        cls.expected = json.loads(path.read_text(encoding='utf-8'))
+        saved = json.loads(path.read_text(encoding='utf-8'))
+
+        # Without node the committed file is all we have, and its date-relative answers are only
+        # true on the day it was made. Say so rather than fail over something nobody can fix here.
+        if saved.get('generatedOn') and saved['generatedOn'] != fmt.today_iso():
+            raise unittest.SkipTest(
+                'expected.json was generated on %s and some cases are relative to today; install '
+                'node, or regenerate it.' % saved['generatedOn']
+            )
+
+        return saved
 
     def test_every_case_matches(self):
         cases = self.spec['cases']

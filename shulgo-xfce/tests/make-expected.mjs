@@ -11,11 +11,22 @@
  * TZ is pinned because two of these read the machine's clock zone, and an expectation that depends on
  * where the laptop is would be worse than no expectation at all.
  */
-import { writeFileSync, readFileSync } from 'node:fs';
-import * as fmt from '../../shulgo-core/format.js';
+import { writeFileSync, readFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const spec = JSON.parse(readFileSync('cases.json', 'utf8'));
-const out = [];
+/* format.js is an ES module with a .js name, and whether node believes that depends on the nearest
+ * package.json and on the node version — 22 guesses, 18 does not, and "SyntaxError: Unexpected
+ * token 'export'" is what you get for assuming. Copying it to a .mjs and importing that works on
+ * any version and changes nothing about the file under test: it has no imports of its own. */
+const CORE = new URL('../../shulgo-core/format.js', import.meta.url);
+const copy = join(mkdtempSync(join(tmpdir(), 'shulgo-fmt-')), 'format.mjs');
+writeFileSync(copy, readFileSync(CORE, 'utf8'));
+const fmt = await import(pathToFileURL(copy).href);
+
+const spec = JSON.parse(readFileSync(new URL('cases.json', import.meta.url), 'utf8'));
+const results = [];
 
 /**
  * {"__daysFromToday": n} becomes a Y-M-D date, resolved at run time by both runners.
@@ -42,10 +53,14 @@ for (const [name, rawArgs] of spec.cases) {
         throw new Error(`format.js has no export named ${name} — cases.json is out of date`);
     // Deliberately not caught: if the canonical implementation throws on one of these inputs, that is
     // a finding about format.js, not something to paper over with a null in a fixture.
-    out.push(fn(...args) ?? null);
+    results.push(fn(...args) ?? null);
 }
 
-writeFileSync('expected.json', `${JSON.stringify({
+// The test runs this into a temporary file so the comparison is against today's answers; running
+// it by hand writes the committed fixture, which is what somebody without node falls back on.
+const out = process.env.SHULGO_EXPECTED_OUT ?? 'expected.json';
+
+writeFileSync(out, `${JSON.stringify({
     generatedFrom: 'shulgo-core/format.js',
     tz: process.env.TZ ?? null,
     // Recorded because eventDate and takenAt ask Intl for the locale's own forms. The Python has no
@@ -53,7 +68,10 @@ writeFileSync('expected.json', `${JSON.stringify({
     // skips itself rather than failing for a reason that is nobody's fault.
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     node: process.version,
-    results: out,
+    // The day it was made. eventDate's cases are relative to today, so answers from yesterday are
+    // not answers about today, and a fixture that cannot say when it was made rots silently.
+    generatedOn: fmt.todayIso(),
+    results,
 }, null, 2)}\n`);
 
-console.log(`expected.json: ${out.length} results from format.js under ${process.version}`);
+console.log(`${out}: ${results.length} results from format.js under ${process.version}`);

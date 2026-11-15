@@ -71,8 +71,16 @@ class SettingsWindow(Gtk.Window):
         # NOT "Admin › System › API & apps": that is where an administrator makes a key, and an
         # ordinary person running this widget cannot reach it. Telling them to go somewhere they
         # have no access to is worse than saying nothing.
-        grid.attach(self._note('Ask your ShulGo administrator for a key. It is kept in '
-                               '~/.config/jewbuntu/shulgo.conf, readable only by you — never in '
+        link_button = Gtk.Button(label='Link this computer…')
+        link_button.connect('clicked', self._on_link)
+        link_button.set_halign(Gtk.Align.START)
+        grid.attach(link_button, 0, row, 2, 1)
+        row += 1
+
+        grid.attach(self._note('Linking shows a short code to type on your phone, and this computer '
+                               'gets its own key — nothing long to copy. Or ask your ShulGo '
+                               'administrator for a key and paste it above. Either way it is kept '
+                               'in ~/.config/jewbuntu/shulgo.conf, readable only by you — never in '
                                'dconf.'), 0, row, 2, 1)
         row += 1
 
@@ -194,6 +202,18 @@ class SettingsWindow(Gtk.Window):
             return 'No place chosen yet, so there is nothing to look up.'
 
         return 'Looking around %s (%.4f, %.4f).' % (place[2], place[0], place[1])
+
+    def _on_link(self, *_):
+        """Imported here, not at the top: a session that never links never loads the window."""
+        from .link_window import LinkWindow
+
+        def done(linked):
+            if linked:
+                # The key is in the file now; show it so the window is not quietly out of date.
+                self.key_entry.set_text(config.load_api_key())
+                self._changed = True
+
+        LinkWindow(self.api, done, parent=self)
 
     # ---- the place lookup ------------------------------------------------------------------
 

@@ -43,8 +43,9 @@ icon's "not found anywhere" branch has not been exercised either, only the other
 
 **The logic is tested. Most of the window still is not.**
 
-81 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
-files, where the tray icon comes from, and the rules that decide what you see. Of those, 166 individual wording cases are checked *against
+99 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
+files, where the tray icon comes from, what each device-linking answer means, and the rules that
+decide what you see. Of those, 166 individual wording cases are checked *against
 the JavaScript* — see below.
 
 There is still no PyGObject on the machine this is written on, so the GTK code is only ever exercised
@@ -89,7 +90,30 @@ python3 -m shulgo_xfce --check      # what this machine has
 python3 -m shulgo_xfce              # run it
 ```
 
-Then click the icon › Settings, paste a ShulGo API key, and search for where you daven.
+Then click the icon and choose **Link this computer**. It shows a short code; type that at
+shulgo.com/link on your phone, approve it, and this computer gets a key of its own — nothing long to
+copy and nobody to ask. (A key from your ShulGo administrator still pastes into Settings if you
+prefer.) Then search for where you daven.
+
+## Getting a key without typing one
+
+The widget speaks ShulGo's device-linking flow — RFC 8628, the way a smart TV signs in. **Link this
+computer**, from the tray menu or Settings, asks ShulGo for a pair of codes, shows you the short one,
+and keeps asking while you approve it on a phone, where a modern browser works. The key arrives over
+the wire and lands in the same file a typed one would, with the same permissions.
+
+That matters most on exactly the hardware this is for. The machine it was first run on has Dillo, no
+JavaScript, and cannot open shulgo.com at all — so short of typing forty characters by hand there was
+no way to get a key onto it.
+
+What each answer means lives in [`link.py`](shulgo_xfce/link.py), apart from any window, and is
+tested — including the two that are easy to get wrong because they are not failures:
+`authorization_pending` and `slow_down` are the normal course of events. A dropped network counts as
+"keep asking", deliberately: somebody is standing at their phone halfway through approving, and a
+sleeping WiFi card is not a reason to throw that away. The code's own ten minutes ends it soon
+enough.
+
+A key from your ShulGo administrator still pastes into Settings, for anyone who would rather.
 
 ## How the wording is kept honest
 

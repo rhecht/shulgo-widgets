@@ -137,6 +137,7 @@ class ShulGoTray:
         self.menu.append(self.footer)
 
         for label, handler in (
+            ('Link this computer…', self._on_link),
             ('Refresh now', lambda *_: self.refresh(fresh=True)),
             ('Open ShulGo', self._on_open_site),
             ('Settings…', self._on_settings),
@@ -336,7 +337,7 @@ class ShulGoTray:
 
         notice = offline_notice(self.state, bool(rows) or bool(self.state['zmanim']))
         if not self.api.has_key:
-            self._set(self.notice, 'Add your ShulGo API key in Settings.')
+            self._set(self.notice, 'No key yet — choose “Link this computer”.')
             self.notice.show()
         elif notice:
             self._set(self.notice, '<i>%s</i>' % escape_markup(notice['short']))
@@ -509,6 +510,18 @@ class ShulGoTray:
         except GLib.Error:
             # No browser, or no desktop to ask. Not worth a dialog in a tray menu.
             pass
+
+    def _on_link(self, *_):
+        """Linking, straight from the menu: the first thing a new install needs, and the one thing
+        it cannot do without a key."""
+        from .link_window import LinkWindow
+
+        def done(linked):
+            if linked:
+                self.api.reconfigure(api_key=config.load_api_key())
+                self.refresh(fresh=True)
+
+        LinkWindow(self.api, done)
 
     def _on_settings(self, *_):
         # Imported here, not at the top: a session that never opens settings never loads this.
