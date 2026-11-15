@@ -33,8 +33,8 @@ from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noq
 from . import link  # noqa: E402
 from .fmt import (  # noqa: E402
     countdown, countdown_short, escape_markup, event_date, maps_uri, miles, minutes_until,
-    minyan_destination, minyan_note, minyan_subtitle, offline_notice, shiur_subtitle,
-    tefillah_label, today_iso, updated_ago, zmanim_list,
+    minyan_destination, minyan_note, minyan_subtitle, minyan_time, offline_notice, shiur_subtitle,
+    tefillah_label, today_iso, updated_ago, zman_time, zmanim_list,
 )
 
 ICON_NAME = icons.ICON_NAME
@@ -440,10 +440,17 @@ class ShulGoTray:
             minutes = minutes_until(row.get('starts_at'))
             subtitle = minyan_subtitle(row, mode)
             note = minyan_note(row)
-            line = '<b>%s %s</b>' % (escape_markup(tefillah_label(row.get('tefillah'))),
-                                     escape_markup(countdown(minutes)))
-            if subtitle:
-                line += '\n<small>%s</small>' % escape_markup(subtitle)
+            # The time it starts, then what it is — which is what somebody glances for. The
+            # countdown moves down beside the shul and the distance: useful, but not the headline.
+            # The first version showed only a countdown and no clock time anywhere, which is how
+            # "I don't see any times" came back from somebody actually using it.
+            clock = minyan_time(row)
+            line = '<b>%s</b>' % escape_markup(
+                '%s  %s' % (clock, tefillah_label(row.get('tefillah'))) if clock
+                else tefillah_label(row.get('tefillah')))
+            under = ' · '.join([x for x in (countdown(minutes), subtitle) if x])
+            if under:
+                line += '\n<small>%s</small>' % escape_markup(under)
             if note:
                 line += '\n<small>%s</small>' % escape_markup(note)
             self._set(item, line)
@@ -486,7 +493,7 @@ class ShulGoTray:
 
         for z in rows:
             label = z.get('label') or z.get('name') or ''
-            when = z.get('display_time') or ''
+            when = zman_time(z)
             text = '%s  %s' % (escape_markup(label), escape_markup(when))
             item = self._text_item('<b>%s</b>' % text if z.get('isNext') else text, sensitive=False)
             self.zmanim_menu.append(item)

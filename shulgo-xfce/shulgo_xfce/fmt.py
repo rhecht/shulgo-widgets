@@ -391,6 +391,22 @@ def maps_uri(destination):
 
 # ---- zmanim ----------------------------------------------------------------------------------
 
+def zman_time(z):
+    """The clock time to print beside a zman — and it is `display`, not `display_time`.
+
+    Worth a function of its own purely to pin the name down. The API uses two different fields for
+    the same idea: a minyan carries `display_time`, a zman carries `display`. I read `display_time`
+    for both, so every zman showed its label with an empty space where the time belonged, and
+    somebody using the widget simply said "I don't see any times".
+    """
+    return (z or {}).get('display') or ''
+
+
+def minyan_time(item):
+    """And the clock time a minyan starts: `display_time` here, the other one."""
+    return (item or {}).get('display_time') or ''
+
+
 def zmanim_list(data, now=None):
     """Zmanim come back as an object; this puts them in clock order and says which is still ahead."""
     now = now_unix() if now is None else now

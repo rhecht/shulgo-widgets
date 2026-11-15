@@ -130,3 +130,40 @@ class WhatComesOutOfAnAnswer(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TheTwoFieldsThatBothMeanTime(unittest.TestCase):
+    """The API uses `display` for a zman and `display_time` for a minyan.
+
+    Reading one for the other is silent: you get an empty string and a row with a label and a gap
+    where the time belongs. That is exactly what happened — every zman in the Xfce menu showed no
+    time at all, and the report that came back was "I don't see any times".
+
+    The shapes below are copied from Api\\V1\\Directory: zman() returns time/display/label/about, and
+    a minyan carries display_time (the GNOME widget reads item.display_time for its time box).
+    """
+
+    def test_a_zman_carries_display(self):
+        from shulgo_xfce.fmt import zman_time
+
+        z = {'time': '2026-11-14T06:12:00-05:00', 'display': '6:12 AM', 'label': 'Alos', 'about': '…'}
+        self.assertEqual(zman_time(z), '6:12 AM')
+
+    def test_a_minyan_carries_display_time(self):
+        from shulgo_xfce.fmt import minyan_time
+
+        self.assertEqual(minyan_time({'display_time': '7:15 AM'}), '7:15 AM')
+
+    def test_neither_reads_the_others_field(self):
+        from shulgo_xfce.fmt import minyan_time, zman_time
+
+        self.assertEqual(zman_time({'display_time': '6:12 AM'}), '',
+                         'a zman has no display_time; reading one must not quietly half-work')
+        self.assertEqual(minyan_time({'display': '7:15 AM'}), '')
+
+    def test_missing_is_empty_rather_than_a_crash(self):
+        from shulgo_xfce.fmt import minyan_time, zman_time
+
+        for f in (zman_time, minyan_time):
+            self.assertEqual(f({}), '')
+            self.assertEqual(f(None), '')
