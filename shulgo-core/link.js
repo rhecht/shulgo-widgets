@@ -56,7 +56,7 @@ export class Linking {
         this.waiting = null;
     }
 
-    /** A linking with no device code is not one; say so rather than poll nothing for ten minutes. */
+    /** A linking with no device code is not one; say so rather than poll nothing until it expires. */
     get usable() {
         return Boolean(this.deviceCode && this.userCode);
     }
@@ -74,7 +74,7 @@ export class Linking {
      *
      * A network fault counts as "keep asking", deliberately. Somebody is standing at their phone
      * halfway through approving this, and a dropped packet is not a reason to throw that away. The
-     * code's own ten minutes ends it soon enough if the link never comes back.
+     * code's own deadline ends it soon enough if the link never comes back.
      */
     absorb(answer) {
         const got = answer ?? {};

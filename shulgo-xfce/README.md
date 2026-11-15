@@ -110,7 +110,7 @@ What each answer means lives in [`link.py`](shulgo_xfce/link.py), apart from any
 tested — including the two that are easy to get wrong because they are not failures:
 `authorization_pending` and `slow_down` are the normal course of events. A dropped network counts as
 "keep asking", deliberately: somebody is standing at their phone halfway through approving, and a
-sleeping WiFi card is not a reason to throw that away. The code's own ten minutes ends it soon
+sleeping WiFi card is not a reason to throw that away. The code's own deadline ends it soon
 enough.
 
 A key from your ShulGo administrator still pastes into Settings, for anyone who would rather.

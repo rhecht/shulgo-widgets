@@ -33,7 +33,7 @@ class ReadingTheCodes(unittest.TestCase):
         self.assertTrue(it.usable)
 
     def test_a_nonsense_answer_is_not_a_linking(self):
-        """Better to say so than to poll an empty string every five seconds for ten minutes."""
+        """Better to say so than to poll an empty string every five seconds until it expires."""
         self.assertFalse(link.Linking({}).usable)
         self.assertFalse(link.Linking(None).usable)
         self.assertFalse(link.Linking({'user_code': 'K7PQ-4RDT'}).usable)
