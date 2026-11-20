@@ -59,15 +59,16 @@ BY_NAME = {
 }
 
 
-def resolve(arg):
+def resolve(arg, now):
     """{"__daysFromToday": n} becomes a Y-M-D date, exactly as make-expected.mjs resolves it.
 
-    A literal date in cases.json would read "Tue, Nov 17" the day expected.json was generated and
-    "Nov 17, 2026" six months later, and this test would start failing for a reason that has nothing
-    to do with the Python.
+    Relative to the frozen `now` out of cases.json, never to the real clock. While it was the real
+    clock, answers generated one day stopped matching the next and this whole class skipped itself —
+    so the check that holds every ShulGo widget to one wording was absent from every package built
+    after the day the fixture was made, and said so only in a line of test output nobody reads.
     """
     if isinstance(arg, dict) and '__daysFromToday' in arg:
-        return fmt.today_iso(time.time() + arg['__daysFromToday'] * 86400)
+        return fmt.today_iso(now + arg['__daysFromToday'] * 86400)
 
     return arg
 
@@ -117,13 +118,8 @@ class SameWordsAsTheJavaScript(unittest.TestCase):
             )
         saved = json.loads(path.read_text(encoding='utf-8'))
 
-        # Without node the committed file is all we have, and its date-relative answers are only
-        # true on the day it was made. Say so rather than fail over something nobody can fix here.
-        if saved.get('generatedOn') and saved['generatedOn'] != fmt.today_iso():
-            raise unittest.SkipTest(
-                'expected.json was generated on %s and some cases are relative to today; install '
-                'node, or regenerate it.' % saved['generatedOn']
-            )
+        # No ageing check any more: every clock-dependent case carries the frozen `now` from
+        # cases.json, so a committed fixture is as true today as the day it was generated.
 
         return saved
 
@@ -154,7 +150,7 @@ class SameWordsAsTheJavaScript(unittest.TestCase):
         for i, ((name, args), want) in enumerate(zip(cases, results)):
             fn = BY_NAME.get(name)
             self.assertIsNotNone(fn, 'test_fmt.py has no Python function mapped for %r' % name)
-            got = fn(*[resolve(a) for a in args])
+            got = fn(*[resolve(a, self.spec['now']) for a in args])
             # Round-trip through JSON so a tuple/list or int/float difference isn't called a
             # disagreement about wording, which is what this test is actually about.
             if json.loads(json.dumps(got)) != want:

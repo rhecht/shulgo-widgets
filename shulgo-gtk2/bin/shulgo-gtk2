@@ -1,0 +1,22 @@
+#!/bin/sh
+# ShulGo's tray widget for GNOME 2.20 on Ubuntu 7.10.
+#
+# A shell script rather than `python -m shulgo_gtk2`, because -m does not run packages until Python
+# 2.7: on 2.5 it finds top-level modules only. So the package directory goes on the path and main()
+# is called by name.
+#
+# No -E here. It would discard PYTHONPATH, which is the one thing this script is for.
+
+set -eu
+
+PREFIX_LIB=/usr/lib/shulgo-gtk2
+if [ -d "$PREFIX_LIB" ]; then
+    PYTHONPATH="$PREFIX_LIB${PYTHONPATH:+:$PYTHONPATH}"
+else
+    # Running from a checkout: the package is one directory up from this script.
+    HERE=$(dirname "$0")
+    PYTHONPATH="$(cd "$HERE/.." && pwd)${PYTHONPATH:+:$PYTHONPATH}"
+fi
+export PYTHONPATH
+
+exec python -c 'import sys; from shulgo_gtk2.main import main; sys.exit(main())' "$@"

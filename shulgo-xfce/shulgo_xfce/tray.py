@@ -97,6 +97,12 @@ class ShulGoTray:
         self._pending = None
         self._pending_timer = None
         self._build()
+        # The top-bar line goes out before anything is asked of the network. refresh() does draw it
+        # on the no-place path, but only once it has run, and on a cold login that is a gap in which
+        # the panel slot sits empty — which is the one moment a new user most needs to be told that
+        # the thing wants linking. Somebody running --check in that gap saw "nothing written yet"
+        # and reasonably read it as the line being broken.
+        self._bar(None)
         self.refresh()
         GLib.timeout_add_seconds(60, self._tick)
         self._start_timer()
