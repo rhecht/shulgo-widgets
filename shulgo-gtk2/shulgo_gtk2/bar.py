@@ -91,8 +91,11 @@ def tooltip(rows, zmanim=(), place=None, stale_since=None, window_minutes=120,
     if pending:
         return u'ShulGo is waiting for this computer to be approved.'
     if not has_key:
+        # "Click the ShulGo icon" rather than "open the menu": the Arch session's
+        # wording, and better than mine was. The icon is the thing on screen in front of
+        # the person reading this; "the menu" is a menu they have not found yet.
         return (u'ShulGo is not linked to an account yet.\n'
-                u'Open the menu and choose “Link this computer”.')
+                u'Click the ShulGo icon, then “Link this computer”.')
     if not place:
         return (u'ShulGo does not know where you are yet.\n'
                 u'Open Settings and choose a place.')
