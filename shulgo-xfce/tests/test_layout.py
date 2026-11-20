@@ -33,7 +33,11 @@ SCREENS = (
 # weaken every assertion below.
 TOP_BAR = 28
 DOCK = 60
-TITLEBAR = 28
+
+# xfwm4's decoration measured 29 px on the VM (a 560 px window came back as a 589 px frame), so 28
+# was a pixel short of the thing it stands for — harmless, because ALLOWANCE is 40, but a constant
+# that claims to be generous should be. 32 for the same reason as the panels above.
+TITLEBAR = 32
 
 
 class FitsOnTheScreen(unittest.TestCase):
@@ -158,6 +162,75 @@ class TheArithmetic(unittest.TestCase):
         _, asked = layout.window_size(1024, 600, 1024, 768)
 
         self.assertEqual(asked, 600 - layout.ALLOWANCE)
+
+
+class WhereItOpens(unittest.TestCase):
+    """Centred in the work area — and the point of testing it is that centring has a trap in it.
+
+    Centring on the *screen* is the one-line version and it puts an 800x600 window's bottom edge
+    under the dock, which is the original bug wearing a tidier hat. These assertions are about the
+    frame, decoration included, staying inside the work area on every screen in the table.
+    """
+
+    def test_the_whole_frame_stays_inside_the_work_area(self):
+        for width, height in SCREENS:
+            for work_y in (0, TOP_BAR):
+                work_h = height - work_y - DOCK
+                asked_w, asked_h = layout.window_size(width, work_h, width, height)
+                x, y = layout.window_position(asked_w, asked_h, 0, work_y, width, work_h)
+
+                self.assertGreaterEqual(x, 0)
+                self.assertGreaterEqual(y, work_y)
+                self.assertLessEqual(
+                    x + asked_w, width,
+                    'a %dx%d screen put a %d px window at x=%d' % (width, height, asked_w, x))
+                self.assertLessEqual(
+                    y + asked_h + TITLEBAR, work_y + work_h,
+                    'a %dx%d screen put a %d px window at y=%d, and the work area ends at %d'
+                    % (width, height, asked_h, y, work_y + work_h))
+
+    def test_a_window_with_no_room_to_spare_sits_at_the_top_not_below_it(self):
+        """800x600 with both panels: the window is as tall as the room allows.
+
+        There is nothing to centre, and the arithmetic has to notice that rather than halving a
+        negative number and moving the window up off the top of the work area.
+        """
+        _, asked = layout.window_size(800, 526, 800, 600)
+        _, y = layout.window_position(800, asked, 0, 25, 800, 526)
+
+        self.assertEqual(y, 25)
+
+    def test_it_is_actually_centred_when_there_is_room(self):
+        """Not just inside the work area — a function that returned the origin would pass that."""
+        x, y = layout.window_position(800, 560, 0, 25, 1280, 726)
+
+        self.assertGreater(x, 200)
+        self.assertGreater(y, 25)
+
+    def test_the_origin_of_the_work_area_is_not_assumed_to_be_zero(self):
+        """A panel above the work area moves its top edge down, and the window has to follow."""
+        _, high = layout.window_position(800, 400, 0, 0, 1280, 700)
+        _, low = layout.window_position(800, 400, 0, 25, 1280, 700)
+
+        self.assertEqual(low - high, 25)
+
+    def test_a_work_area_smaller_than_the_window_does_not_go_negative(self):
+        """No screen in the table is this small, and the guard against it still has to be tested.
+
+        Below about 580 px wide the MIN_WIDTH floor is wider than the whole work area, so there is
+        nothing left over to halve; halving it anyway would put the window off the left edge as
+        well as the right. This case is here because a mutation that deleted the guard passed
+        every other test in this file — which is the same way a dead guard hides, from the other
+        side.
+        """
+        self.assertEqual(
+            layout.window_position(layout.MIN_WIDTH, layout.MIN_HEIGHT, 0, 0, 500, 300),
+            (0, 0))
+
+    def test_an_unknown_work_area_means_let_the_window_manager_decide(self):
+        for nothing in (0, None, -1):
+            self.assertIsNone(
+                layout.window_position(800, 560, nothing, nothing, nothing, nothing))
 
 
 if __name__ == '__main__':

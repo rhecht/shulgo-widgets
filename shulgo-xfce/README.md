@@ -43,9 +43,9 @@ icon's "not found anywhere" branch has not been exercised either, only the other
 
 **The logic is tested. Most of the window still is not.**
 
-156 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
+162 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
 files, where the tray icon comes from, what each device-linking answer means, how big the settings
-window may open, and the rules that decide what you see. Of those, 166 individual wording
+window may open and where on the screen it opens, and the rules that decide what you see. Of those, 166 individual wording
 cases are checked *against the JavaScript* — see below.
 
 There is still no PyGObject on the machine this is written on, so the GTK code is only ever exercised
@@ -64,6 +64,23 @@ short on 800x600.
 The structure matters more than the figures. `set_default_size` is only a request: a window whose
 child insists on 850 px gets 850 px. The body is now in a `Gtk.ScrolledWindow` with the buttons
 outside it, so the window can be as short as the screen demands and the buttons are still on it.
+
+It was then measured on the machine in question — a Pentium III running Jewbuntu Xfce at 1280x800 —
+and the figures the module chooses matched the frames that appeared, to the pixel, on all three
+screen sizes. That same look brought back three faults no arithmetic would have found. The window
+opened with the API key field focused and its contents selected, so one stray keypress replaced a
+key that is shown as dots and cannot be read back; focus now starts on Close, where a stray letter
+does nothing and a stray Return closes without saving. The results combo under the place entry was
+drawn empty before any search, looking like a broken field; it is hidden until it has something to
+say. And the window opened against the top-left corner, because nothing had ever told it where to
+go. `layout.window_position` now centres it **in the work area rather than on the screen** — the
+distinction is not pedantry, since a 515 px frame centred on 800 px of screen ends 6 px underneath
+the dock, which is the original bug in a better disguise.
+
+One label, "Minyanim in the menu (next start)", wrapped to two lines. The column could have been
+widened to fit it, at the cost of squeezing the number fields; the label lost "(next start)"
+instead. Its two neighbours use a parenthesis for the unit — minutes, seconds — so that one read as
+though it were the unit of the number, which it never was.
 
 `python3 -m shulgo_xfce --check` reports the four things that make a tray icon silently fail to
 appear: which tray library is installed, whether there is a display, **whether the icon will

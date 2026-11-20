@@ -43,6 +43,11 @@ PANELS = 84
 
 ALLOWANCE_WIDTH = 48
 
+# What a window manager's border costs on each side. xfwm4's is 1 px; this is deliberately larger,
+# because it is only used to decide where to put the window, and a window a few pixels left of
+# centre looks centred while a window a few pixels off the right edge does not.
+FRAME = 8
+
 
 def height_ceiling(work_area_height, screen_height=None):
     """The tallest this window may be on this screen and still show its buttons.
@@ -98,3 +103,34 @@ def _fit(available, wanted, floor, allowance):
         return floor
 
     return wanted if wanted < room else room
+
+
+def window_position(width, height, work_x, work_y, work_width, work_height):
+    """Where to put a window of this size: the middle of the work area, never past its edges.
+
+    None when the work area is unknown, meaning: do not move it, let the window manager choose.
+
+    The *work* area, not the screen, and the difference is not pedantry. Centring on the screen is
+    the obvious one-liner, and on the screens this runs on it is wrong: a 515 px frame centred on
+    800 px of screen starts at y=42 and ends at 557, which on Jewbuntu is 6 px underneath the dock
+    — the very fault this module exists to prevent, reintroduced for the sake of looking tidy.
+
+    The window's decoration cannot be measured before the window is on screen, so ALLOWANCE stands
+    in for it. That over-estimates xfwm4's by about ten pixels, which puts the window slightly
+    above centre rather than slightly below it. Of those two, above is the one nobody notices.
+    """
+    if not _known(work_width) or not _known(work_height):
+        return None
+
+    return (_centre(work_x, work_width, width + 2 * FRAME),
+            _centre(work_y, work_height, height + ALLOWANCE))
+
+
+def _centre(origin, available, taken):
+    origin = origin if origin else 0
+    room = available - taken
+
+    if room <= 0:
+        return origin
+
+    return origin + (room // 2)

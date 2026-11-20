@@ -43,16 +43,23 @@ class SettingsWindow(Gtk.Window):
         # ask for 460 wide and whatever height it liked, which on a 1280x800 Pentium III put Close
         # and Save below the bottom edge — and those machines are usually 1024x768 or smaller.
         # layout.window_size does the arithmetic, where tests/test_layout.py can reach it.
-        screen = self._monitor()
-        width, height = layout.window_size(*screen)
+        work_x, work_y, work_w, work_h, screen_w, screen_h = self._monitor()
+        width, height = layout.window_size(work_w, work_h, screen_w, screen_h)
         self.set_default_size(width, height)
+
+        # And somewhere deliberate to open, rather than wherever the window manager drops it —
+        # Xfce put it against the top-left corner. The middle of the *work area*, not of the
+        # screen: layout.window_position says why that distinction matters on an 800x600 machine.
+        where = layout.window_position(width, height, work_x, work_y, work_w, work_h)
+        if where:
+            self.move(*where)
 
         # A ceiling as well, so dragging the window taller cannot put the buttons off-screen again.
         # It is the room on the screen, NOT the height opened at: those differ, and using the
         # opened height here would have made the window unresizable, which is a worse fault than
         # the one being fixed. Belt and braces either way — the default size above is what actually
         # guarantees the fit, since a window manager is free to ignore a maximum-size hint.
-        ceiling = layout.height_ceiling(screen[1], screen[3])
+        ceiling = layout.height_ceiling(work_h, screen_h)
         if ceiling:
             try:
                 hints = Gdk.Geometry()
@@ -137,6 +144,11 @@ class SettingsWindow(Gtk.Window):
         self.found_box = Gtk.ComboBoxText()
         self.found_box.set_hexpand(True)
         self.found_box.connect('changed', self._on_pick)
+        # Hidden until a search has something to put in it. An empty combo box under the place
+        # entry reads as a broken field with no label, which is worse than nothing being there:
+        # somebody would try to work out what it is for. set_no_show_all keeps show_all() below
+        # from revealing it; _look() shows it as soon as there is something to say.
+        self.found_box.set_no_show_all(True)
         left.pack_start(self.found_box, False, False, 0)
         self.place_note = self._note(self._place_summary())
         left.pack_start(self.place_note, False, False, 0)
@@ -150,7 +162,7 @@ class SettingsWindow(Gtk.Window):
         self.window_spin = self._spin(15, 360, config.as_int(self.values, 'window-minutes'), 15)
         row = self._labelled(grid, row, 'Look ahead (minutes)', self.window_spin)
         self.length_spin = self._spin(1, 12, config.as_int(self.values, 'list-length'), 1)
-        row = self._labelled(grid, row, 'Minyanim in the menu (next start)', self.length_spin)
+        row = self._labelled(grid, row, 'Minyanim in the menu', self.length_spin)
         self.refresh_spin = self._spin(60, 3600, config.as_int(self.values, 'refresh-seconds'), 60)
         row = self._labelled(grid, row, 'Check ShulGo every (seconds)', self.refresh_spin)
 
@@ -193,18 +205,33 @@ class SettingsWindow(Gtk.Window):
 
         self.show_all()
 
+        # Close, not the first field. The first field is the API key: GTK focuses it on open and
+        # selects all of it, so the window arrived with a masked key highlighted and one stray
+        # keypress replaced the whole thing. Save it then and the widget stops working, with the
+        # cause invisible — the key is dots on screen and there is no undo. Focused here instead,
+        # a stray letter does nothing and a stray Return closes the window without saving.
+        self.set_focus(close)
+
     # ---- the screen ------------------------------------------------------------------------
 
     def _monitor(self):
-        """(work width, work height, screen width, screen height) — zeros when it can't be found.
+        """(work x, work y, work width, work height, screen width, screen height).
 
-        Both pairs, because layout.window_size compares them: a work area smaller than the screen
+        Zeros throughout when none of it can be found out.
+
+        Both sizes, because layout.window_size compares them: a work area smaller than the screen
         is a desktop that has published its panels, and one equal to the screen means they are
-        either absent or invisible to us.
+        either absent or invisible to us. The origin as well, because the work area does not start
+        at the top of the screen when there is a panel above it — on Jewbuntu it starts at y=25,
+        and a window centred as though it started at 0 would sit that much too high.
 
-        Zeros on any failure, which layout.window_size reads as "assume an ordinary screen". A
-        settings window that will not open is a far worse outcome than one sized for 1024x768 on a
-        machine that turned out to have more room.
+        Named rather than indexed at the call site. The caller used to pull these apart with
+        screen[1] and screen[3], which is precisely the sort of thing that comes loose the first
+        time somebody adds a figure to the middle of the tuple — as this change just did.
+
+        Zeros on any failure, which the layout module reads as "assume an ordinary screen, and
+        leave the position to the window manager". A settings window that will not open is a far
+        worse outcome than one sized for 1024x768 on a machine with more room than that.
         """
         try:
             display = Gdk.Display.get_default()
@@ -213,7 +240,7 @@ class SettingsWindow(Gtk.Window):
                 monitor = display.get_primary_monitor() or display.get_monitor(0)
                 work, whole = monitor.get_workarea(), monitor.get_geometry()
 
-                return work.width, work.height, whole.width, whole.height
+                return work.x, work.y, work.width, work.height, whole.width, whole.height
 
             # Older GTK3: the same two rectangles, asked for the other way round.
             screen = Gdk.Screen.get_default()
@@ -221,9 +248,9 @@ class SettingsWindow(Gtk.Window):
             work = screen.get_monitor_workarea(which)
             whole = screen.get_monitor_geometry(which)
 
-            return work.width, work.height, whole.width, whole.height
+            return work.x, work.y, work.width, work.height, whole.width, whole.height
         except Exception:
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, 0, 0
 
     # ---- small builders --------------------------------------------------------------------
 
@@ -303,6 +330,7 @@ class SettingsWindow(Gtk.Window):
         self.found_box.remove_all()
         self.found_box.append('', 'Searching…')
         self.found_box.set_active(0)
+        self.found_box.show()
         self._looking = threading.Thread(target=self._do_look, args=(text,), daemon=True)
         self._looking.start()
 
