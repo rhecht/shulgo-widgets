@@ -78,11 +78,29 @@ def summary(headline, now=None, stale=False, has_key=True, place=None,
     return (clock or name)[:MAX_TXT]
 
 
-def tooltip(rows, zmanim=(), place=None, stale_since=None, window_minutes=120):
-    u"""The fuller picture, behind the line. Several lines; genmon shows them as a tooltip."""
-    lines = []
-    if place:
-        lines.append(u'ShulGo — %s' % place)
+def tooltip(rows, zmanim=(), place=None, stale_since=None, window_minutes=120,
+            has_key=True, pending=False):
+    u"""The fuller picture, behind the line. Several lines; genmon shows them as a tooltip.
+
+    It is told has_key and pending for one reason: so it cannot contradict the line it sits
+    behind. Without them a machine that had never been linked showed "ShulGo: not linked" on
+    the panel and "Nothing in the next 120 minutes" in the tooltip — which says the opposite,
+    that ShulGo looked and found nothing. Somebody would believe the second one and conclude
+    there are no minyanim near them.
+    """
+    if pending:
+        return u'ShulGo is waiting for this computer to be approved.'
+    if not has_key:
+        # "Click the ShulGo icon" rather than "open the menu": the Arch session's
+        # wording, and better than mine was. The icon is the thing on screen in front of
+        # the person reading this; "the menu" is a menu they have not found yet.
+        return (u'ShulGo is not linked to an account yet.\n'
+                u'Click the ShulGo icon, then “Link this computer”.')
+    if not place:
+        return (u'ShulGo does not know where you are yet.\n'
+                u'Open Settings and choose a place.')
+
+    lines = [u'ShulGo — %s' % place]
 
     if rows:
         for row in rows[:TOOLTIP_ROWS]:
@@ -112,19 +130,24 @@ def document(**kwargs):
     Escaping matters here and is easy to forget: a shul called "Beis Medrash & Co" would otherwise
     turn the panel's markup into an error rather than a name.
     """
-    # A plain loop, not a dict comprehension: those are 2.7, and this has to run on 2.5.
-    tool_args = {}
-    for name in (u'rows', u'zmanim', u'stale_since'):
-        if name in kwargs:
-            tool_args[name] = kwargs.pop(name)
+    # The tooltip's arguments are pulled out and passed by name, never by unpacking a dict.
+    #
+    # Python 2.5 requires keyword argument NAMES to be byte strings: f(**{u'x': 1}) raises
+    # "TypeError: keywords must be strings", and it was not relaxed until 2.6.5. Every literal in
+    # this package carries a u prefix because 2.5 has no unicode_literals — so the moment a dict
+    # with those keys met a **, the widget died in __init__, before the tray icon existed. It did
+    # not look like a crash to anybody: the autostart entry ran, nothing appeared, and that was all.
+    #
+    # Passing them by name sidesteps the rule entirely rather than depending on remembering it.
+    rows = kwargs.pop(u'rows', None) or ()
+    zmanim = kwargs.pop(u'zmanim', None) or ()
+    stale_since = kwargs.pop(u'stale_since', None)
     place = kwargs.get(u'place')
     window = kwargs.get(u'window_minutes', 120)
 
     txt = summary(**kwargs)
-    tool = tooltip(place=place, window_minutes=window, **{
-        u'rows': tool_args.get(u'rows') or (),
-        u'zmanim': tool_args.get(u'zmanim') or (),
-        u'stale_since': tool_args.get(u'stale_since'),
-    })
+    tool = tooltip(rows, zmanim=zmanim, place=place, stale_since=stale_since,
+                   window_minutes=window, has_key=kwargs.get(u'has_key', True),
+                   pending=kwargs.get(u'pending', False))
 
     return u'<txt>%s</txt>\n<tool>%s</tool>\n' % (escape_markup(txt), escape_markup(tool))

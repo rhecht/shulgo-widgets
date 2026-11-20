@@ -47,8 +47,26 @@ install:
 	install -d $(DOCDIR)
 	install -m 644 README.md $(DOCDIR)/README.md
 
+# Every test file, not one of them. `make check` used to run tests/test_fmt.py alone, which is how
+# this package shipped with the panel-line module untested and crashed on a live CD. unittest
+# discovery is 2.7, so the files are looped over by hand.
 check:
-	TZ=America/Toronto $(PYTHON) tests/test_fmt.py
+	@for t in tests/test_*.py; do \
+		[ "$$t" = "tests/test_tray.py" ] && continue; \
+		echo "--- $$t"; \
+		TZ=America/Toronto $(PYTHON) "$$t" || exit 1; \
+	done
+
+# The tray itself, which needs an X server and so cannot be part of `check`. Both startup crashes
+# on the live CD were in Tray.__init__ and `check` could not reach it. Xvfb is in gutsy main.
+check-display:
+	@command -v Xvfb >/dev/null || { echo "Xvfb not installed: apt-get install xvfb"; exit 1; }
+	@Xvfb :77 -screen 0 1024x768x16 >/dev/null 2>&1 & \
+	sleep 2; \
+	DISPLAY=:77 TZ=America/Toronto $(PYTHON) tests/test_tray.py; \
+	status=$$?; \
+	kill %1 2>/dev/null; \
+	exit $$status
 
 uninstall:
 	rm -rf $(LIBDIR) $(DOCDIR)
@@ -56,4 +74,4 @@ uninstall:
 	rm -f $(ICONDIR)/scalable/apps/shulgo.svg $(ICONDIR)/22x22/apps/shulgo.png \
 	      $(ICONDIR)/24x24/apps/shulgo.png $(ICONDIR)/48x48/apps/shulgo.png
 
-.PHONY: all install check uninstall
+.PHONY: all install check check-display uninstall
