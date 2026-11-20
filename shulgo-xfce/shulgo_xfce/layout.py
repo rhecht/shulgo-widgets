@@ -31,7 +31,14 @@ ALLOWANCE = 40
 # What else to keep clear when nothing can be assumed about the panels. GTK reports the work area,
 # which on a well-behaved desktop already excludes them — but only when the window manager
 # publishes _NET_WORKAREA, and an overlay dock that sets no strut is invisible to get_workarea().
-# The Arch 32 edition has a ~28 px top bar and a ~60 px dock, and this covers both.
+# The measured figures, from the session that runs the VM: the Arch 32 edition's top bar is 24 px
+# (xfce4-panel, p=6) and its dock is 48 px (xfce4-panel with Docklike, p=10), so 72 px. Jewbuntu
+# Classic on 7.10 comes to 64 — GNOME's 24 px top panel and a 40 px bottom dock.
+#
+# 84 rather than 72, because these two are the editions somebody has measured and neither is the
+# only desktop this will ever run on; a panel a little taller than Jewbuntu's costs nothing here
+# and a panel taller than the allowance costs the buttons. The earlier guess of 28 + 60 happened
+# to land on the same safe side of the real numbers, which is luck, not method.
 PANELS = 84
 
 ALLOWANCE_WIDTH = 48

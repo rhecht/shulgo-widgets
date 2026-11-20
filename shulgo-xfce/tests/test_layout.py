@@ -26,7 +26,11 @@ SCREENS = (
     (1366, 768),   # a slightly later laptop
 )
 
-# What sits on screen around the window.
+# What sits on screen around the window. Deliberately a little larger than anything measured: the
+# Arch 32 edition's panels are 24 and 48, and Jewbuntu Classic's are 24 and 40. Bigger figures here
+# mean less room in the assertions, so these make the tests stricter than the desktops they stand
+# for. They are not meant to be corrected downwards to match a measurement — that would quietly
+# weaken every assertion below.
 TOP_BAR = 28
 DOCK = 60
 TITLEBAR = 28
