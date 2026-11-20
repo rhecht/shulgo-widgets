@@ -2,8 +2,8 @@
   "generatedFrom": "shulgo-core/format.js",
   "tz": "America/Toronto",
   "locale": "en-US",
-  "node": "v18.12.1",
-  "generatedOn": "2026-11-14",
+  "node": "v22.23.3",
+  "generatedOn": "2026-11-19",
   "results": [
     "Minyan",
     "Minyan",
@@ -241,16 +241,16 @@
     "Rabbi Stern · Shomrei, Toronto",
     "Today",
     "Tomorrow",
-    "Mon, Nov 16",
-    "Wed, Nov 18",
-    "Sat, Dec 26",
-    "Wed, May 12",
-    "Jun 2, 2027",
-    "Fri, Nov 13",
-    "Apr 28, 2026",
+    "Fri, Nov 14",
+    "Sun, Nov 16",
+    "Wed, Dec 24",
+    "Sun, May 10",
+    "May 31, 2026",
+    "Tue, Nov 11",
+    "Apr 26, 2025",
     "",
     "",
     "nonsense",
-    "Sun, Feb 14"
+    "Feb 14, 2027"
   ]
 }

@@ -249,11 +249,18 @@ export function todayIso(now = new Date()) {
 }
 
 /** "Tue 17 Nov" for an event's date, and "Today" / "Tomorrow" when it's close. */
-export function eventDate(isoDate) {
+/**
+ * `now` is a unix time and defaults to the real clock, so nothing about how this behaves changes.
+ * It exists so the test fixtures can be generated against a frozen instant: when these two read the
+ * wall clock directly, answers generated on one day stopped matching the next, the whole
+ * same-words-as-the-JavaScript class skipped itself, and the only check holding the five widgets to
+ * one wording quietly went missing from every build after the day it was generated.
+ */
+export function eventDate(isoDate, now = nowUnix()) {
     const when = dateOnly(isoDate);
     if (!when)
         return String(isoDate ?? '');
-    const today = dateOnly(todayIso());
+    const today = dateOnly(todayIso(new Date(now * 1000)));
     const days = Math.round((when - today) / 86400000);
     if (days === 0)
         return 'Today';
@@ -349,11 +356,11 @@ export function placeFromTimezone(zone) {
 }
 
 /** "from 1:45 PM", or "from yesterday" once it's no longer today's. */
-export function takenAt(unix) {
+export function takenAt(unix, now = nowUnix()) {
     if (!unix)
         return '';
     const when = new Date(unix * 1000);
-    const sameDay = todayIso(when) === todayIso();
+    const sameDay = todayIso(when) === todayIso(new Date(now * 1000));
     let clock;
     try {
         clock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(when);
@@ -364,7 +371,8 @@ export function takenAt(unix) {
     if (sameDay)
         return `from ${clock}`;
 
-    const days = Math.round((dateOnly(todayIso()) - dateOnly(todayIso(when))) / 86400000);
+    const days = Math.round((dateOnly(todayIso(new Date(now * 1000)))
+                             - dateOnly(todayIso(when))) / 86400000);
     if (days === 1)
         return `from yesterday, ${clock}`;
 

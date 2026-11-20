@@ -220,7 +220,7 @@ def _date_only(iso_date):
         return None
 
 
-def event_date(iso_date):
+def event_date(iso_date, now=None):
     """"Tue, Nov 17" for an event's date, and "Today" / "Tomorrow" when it's close.
 
     The second place the port cannot be exact, and the bigger of the two. format.js asks Intl for the
@@ -228,12 +228,17 @@ def event_date(iso_date):
     again, while this always writes the en-US form. "Today" and "Tomorrow" — the two that carry most
     of the meaning — are identical everywhere, and tests/test_fmt.py skips the comparison unless node
     is running under en-US so the difference is never quietly papered over.
+
+    `now` is a unix time and defaults to the real clock, so nothing about how this behaves changes.
+    It exists so the fixtures can be generated against a frozen instant — while these read the wall
+    clock directly, answers generated on one day stopped matching the next, and the whole
+    same-words-as-the-JavaScript class skipped itself out of every build after that day.
     """
     when = _date_only(iso_date)
     if when is None:
         return str(iso_date or '')
 
-    today = _date_only(today_iso())
+    today = _date_only(today_iso(now))
     days = js_round((when - today) / 86400.0)
     if days == 0:
         return 'Today'
@@ -485,12 +490,12 @@ def _clock(unix):
     return '%d:%02d %s' % (hour, t.tm_min, 'AM' if t.tm_hour < 12 else 'PM')
 
 
-def taken_at(unix):
+def taken_at(unix, now=None):
     """"from 1:45 PM", or "from yesterday, 1:45 PM" once it's no longer today's."""
     if not unix:
         return ''
     clock = _clock(unix)
-    if today_iso(unix) == today_iso():
+    if today_iso(unix) == today_iso(now):
         return 'from %s' % clock
 
     # Whole days apart, counted from each one's local midnight, so a DST change doesn't make
@@ -500,7 +505,7 @@ def taken_at(unix):
 
         return time.mktime((t.tm_year, t.tm_mon, t.tm_mday, 12, 0, 0, 0, 0, -1))
 
-    days = js_round((midday(time.time()) - midday(unix)) / 86400.0)
+    days = js_round((midday(now_unix() if now is None else now) - midday(unix)) / 86400.0)
     if days == 1:
         return 'from yesterday, %s' % clock
 

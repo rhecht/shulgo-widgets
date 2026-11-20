@@ -37,7 +37,9 @@ const results = [];
  */
 const resolve = (arg) => {
     if (arg && typeof arg === 'object' && '__daysFromToday' in arg) {
-        const when = new Date();
+        // Relative to the frozen `now`, never to the real clock: that is what stops the generated
+        // answers ageing out overnight and taking the whole comparison with them.
+        const when = new Date(spec.now * 1000);
         when.setDate(when.getDate() + arg.__daysFromToday);
 
         return fmt.todayIso(when);
