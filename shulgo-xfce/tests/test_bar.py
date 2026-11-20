@@ -119,6 +119,31 @@ class Document(unittest.TestCase):
         self.assertNotIn('Bathurst & Steeles', text)
 
 
+class TheTooltipAgreesWithTheLine(unittest.TestCase):
+    """The two are read together, so they must not say opposite things."""
+
+    def test_an_unlinked_machine_is_not_told_there_are_no_minyanim(self):
+        text = bar.document(headline=None, rows=(), place='Thornhill', has_key=False)
+        self.assertIn('not linked', text)
+        self.assertNotIn('Nothing in the next', text)
+
+    def test_no_place_asks_for_a_place_rather_than_reporting_an_empty_search(self):
+        text = bar.document(headline=None, rows=(), place=None)
+        self.assertIn('choose a place', text.lower())
+        self.assertNotIn('Nothing in the next', text)
+
+    def test_waiting_to_link_says_so_in_both(self):
+        text = bar.document(headline=None, rows=(), place='Thornhill', pending=True)
+        self.assertIn('waiting to link', text)
+        self.assertIn('approved', text)
+
+    def test_an_empty_look_ahead_still_reports_one_when_it_really_is_one(self):
+        """The real empty case must survive all of the above."""
+        text = bar.document(headline=None, rows=(), place='Thornhill',
+                            has_key=True, window_minutes=120)
+        self.assertIn('Nothing in the next 120 minutes.', text)
+
+
 class NoTxtClick(unittest.TestCase):
     def test_there_is_no_txtclick(self):
         """Deliberate. Popping a StatusNotifierItem's menu from a shell command is not something

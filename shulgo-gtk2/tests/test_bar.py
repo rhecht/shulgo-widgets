@@ -119,5 +119,35 @@ class TheWholeDocument(unittest.TestCase):
             self.assertTrue(text.startswith(u'<txt>'), text)
 
 
+class TheTooltipAgreesWithTheLine(unittest.TestCase):
+    u"""The two are read together, so they must not say opposite things.
+
+    Found by constructing a real Tray under Xvfb: the panel line said "ShulGo: not linked" while
+    the tooltip behind it said "Nothing in the next 120 minutes" — which claims the opposite, that
+    ShulGo looked and found nothing. Somebody reads the second and concludes there is no minyan
+    near them.
+    """
+
+    def test_an_unlinked_machine_is_not_told_there_are_no_minyanim(self):
+        text = bar.document(headline=None, rows=(), place=u'Thornhill', has_key=False)
+        self.assertTrue(u'not linked' in text, text)
+        self.assertTrue(u'Nothing in the next' not in text, text)
+
+    def test_no_place_asks_for_one_rather_than_reporting_an_empty_search(self):
+        text = bar.document(headline=None, rows=(), place=None)
+        self.assertTrue(u'choose a place' in text.lower(), text)
+        self.assertTrue(u'Nothing in the next' not in text, text)
+
+    def test_waiting_to_link_says_so_in_both(self):
+        text = bar.document(headline=None, rows=(), place=u'Thornhill', pending=True)
+        self.assertTrue(u'waiting to link' in text, text)
+        self.assertTrue(u'approved' in text, text)
+
+    def test_a_real_empty_look_ahead_still_reports_one(self):
+        text = bar.document(headline=None, rows=(), place=u'Thornhill',
+                            has_key=True, window_minutes=120)
+        self.assertTrue(u'Nothing in the next 120 minutes.' in text, text)
+
+
 if __name__ == '__main__':
     unittest.main()

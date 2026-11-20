@@ -110,12 +110,19 @@ nothing, and is never mentioned again.
 ## Tests
 
 ```
-TZ=America/Toronto python tests/test_fmt.py
+make check            # everything that runs without a desktop
+make check-display    # constructs the real tray, under Xvfb
 ```
 
 Run them under real Python 2.5, in the Gutsy image — the fixtures catch wording drift, but only the
 real interpreter catches a `b''` or an `except X as e`. `tools/py25lint.py` flags the common ones
 before the container has to, and `tools/unicodeify.py` puts the `u` prefixes on.
 
+`check-display` is separate rather than a test that skips itself when there is no `DISPLAY`. Both
+startup crashes found on the first live CD were inside `Tray.__init__`, and `make check` could not
+reach that path at all — it needs an X server. Xvfb is in gutsy main, so it is a three-line problem
+rather than an impossible one, and `make check-display` either runs or fails loudly.
+
 Nothing in the suite skips itself. A test that quietly opts out is how the same-words check went
-missing from every Arch package built after the day its fixture was generated.
+missing from every Arch package built after the day its fixture was generated, and a test that
+could not run at all is how this package reached a live CD with two crashes in its first function.
