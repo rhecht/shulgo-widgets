@@ -112,19 +112,23 @@ def document(**kwargs):
     Escaping matters here and is easy to forget: a shul called "Beis Medrash & Co" would otherwise
     turn the panel's markup into an error rather than a name.
     """
-    # A plain loop, not a dict comprehension: those are 2.7, and this has to run on 2.5.
-    tool_args = {}
-    for name in (u'rows', u'zmanim', u'stale_since'):
-        if name in kwargs:
-            tool_args[name] = kwargs.pop(name)
+    # The tooltip's arguments are pulled out and passed by name, never by unpacking a dict.
+    #
+    # Python 2.5 requires keyword argument NAMES to be byte strings: f(**{u'x': 1}) raises
+    # "TypeError: keywords must be strings", and it was not relaxed until 2.6.5. Every literal in
+    # this package carries a u prefix because 2.5 has no unicode_literals — so the moment a dict
+    # with those keys met a **, the widget died in __init__, before the tray icon existed. It did
+    # not look like a crash to anybody: the autostart entry ran, nothing appeared, and that was all.
+    #
+    # Passing them by name sidesteps the rule entirely rather than depending on remembering it.
+    rows = kwargs.pop(u'rows', None) or ()
+    zmanim = kwargs.pop(u'zmanim', None) or ()
+    stale_since = kwargs.pop(u'stale_since', None)
     place = kwargs.get(u'place')
     window = kwargs.get(u'window_minutes', 120)
 
     txt = summary(**kwargs)
-    tool = tooltip(place=place, window_minutes=window, **{
-        u'rows': tool_args.get(u'rows') or (),
-        u'zmanim': tool_args.get(u'zmanim') or (),
-        u'stale_since': tool_args.get(u'stale_since'),
-    })
+    tool = tooltip(rows, zmanim=zmanim, place=place, stale_since=stale_since,
+                   window_minutes=window)
 
     return u'<txt>%s</txt>\n<tool>%s</tool>\n' % (escape_markup(txt), escape_markup(tool))

@@ -34,7 +34,7 @@ from urllib import quote
 # dependency is visible to anyone looking at what the package needs.
 import simplejson as json
 
-from . import curl
+from . import config, curl
 from .curl import CurlMissing
 
 from .fmt import _text, js_to_fixed
@@ -113,7 +113,7 @@ class Cache(object):
         kept = sorted(self._entries.items(), key=lambda kv: kv[1][u'at'], reverse=True)[:MAX_ENTRIES]
         self._entries = dict(kept)
         try:
-            os.makedirs(os.path.dirname(self._path), exist_ok=True)
+            config._make_dir(os.path.dirname(self._path))
             # Written through a temporary file in the same directory and moved into place, so a
             # machine that loses power mid-write still has yesterday's cache rather than half a file.
             fd, tmp = tempfile.mkstemp(dir=os.path.dirname(self._path), prefix=u'.cache-')

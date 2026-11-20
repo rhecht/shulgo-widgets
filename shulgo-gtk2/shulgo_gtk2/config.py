@@ -152,6 +152,21 @@ def cache_path():
     return os.path.join(base, u'jewbuntu', u'shulgo-gtk2.json')
 
 
+def _make_dir(path):
+    u"""Make a directory if it is not already there — what Python 3.2 spells with exist_ok.
+
+    On 2.5 the keyword is a TypeError, so every write this package does - the key, the settings, a
+    pending link, the panel line - would have raised on the first run, which is the one run where
+    the directory does not exist yet. Caught by tests/test_startup.py rather than by a person.
+    """
+    try:
+        os.makedirs(path)
+    except OSError, e:
+        import errno
+        if e.errno != errno.EEXIST:
+            raise
+
+
 def bar_path():
     u"""Where the panel helper looks for the top-bar line.
 
@@ -200,7 +215,7 @@ def _write_private(path, body):
     mkstemp makes the file 0600 to begin with, so there is no window in which the key sits on disk
     world-readable — which is what writing the file and then chmod-ing it would do.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    _make_dir(os.path.dirname(path))
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=u'.shulgo-')
     try:
         with os.fdopen(fd, u'wb') as fh:

@@ -47,8 +47,14 @@ install:
 	install -d $(DOCDIR)
 	install -m 644 README.md $(DOCDIR)/README.md
 
+# Every test file, not one of them. `make check` used to run tests/test_fmt.py alone, which is how
+# this package shipped with the panel-line module untested and crashed on a live CD. unittest
+# discovery is 2.7, so the files are looped over by hand.
 check:
-	TZ=America/Toronto $(PYTHON) tests/test_fmt.py
+	@for t in tests/test_*.py; do \
+		echo "--- $$t"; \
+		TZ=America/Toronto $(PYTHON) "$$t" || exit 1; \
+	done
 
 uninstall:
 	rm -rf $(LIBDIR) $(DOCDIR)
