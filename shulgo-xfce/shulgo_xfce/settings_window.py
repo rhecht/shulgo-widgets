@@ -292,8 +292,13 @@ class SettingsWindow(Gtk.Window):
     def _labelled(self, grid, row, text, widget):
         label = Gtk.Label(label=text)
         label.set_xalign(0.0)
-        # Allowed to wrap, so a long one ("Minyanim in the menu (next start)") costs a second line
-        # in a column with height to spare rather than forcing the whole window wider.
+        # Allowed to wrap, so a long label costs a second line in a column with height to spare
+        # rather than forcing the whole window wider. 22 is in the font's approximate character
+        # width, which is wider than real lowercase text, so it buys about 28 characters — and
+        # the longest of these labels, "Check ShulGo every (seconds)", is 28. The one that did
+        # wrap on the Pentium III was a 33-character label, and it lost a word rather than this
+        # figure being raised: at 30 the number fields would be down to about 98 px, and the
+        # refresh one goes to 3600.
         label.set_line_wrap(True)
         label.set_max_width_chars(22)
         grid.attach(label, 0, row, 1, 1)
