@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ShulGo
+GenericName=Minyan finder
+Comment=The next minyan near you in the tray, with today's zmanim
+Exec=shulgo-gtk2
+Icon=shulgo
+Terminal=false
+Categories=Utility;Network;
+Keywords=minyan;shul;synagogue;zmanim;davening;
+StartupNotify=false
