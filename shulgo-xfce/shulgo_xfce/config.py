@@ -43,6 +43,7 @@ DEFAULTS = {
     'show-zmanim': 'yes',
     'show-events': 'yes',
     'show-shiurim': 'yes',
+    'panel-line': 'yes',       # the line beside the clock, via xfce4-genmon-plugin
 }
 
 
@@ -141,6 +142,37 @@ def cache_path():
     base = os.environ.get('XDG_CACHE_HOME') or os.path.join(os.path.expanduser('~'), '.cache')
 
     return os.path.join(base, 'jewbuntu', 'shulgo-xfce.json')
+
+
+def bar_path():
+    """Where the panel helper looks for the top-bar line.
+
+    The helper that xfce4-genmon-plugin runs is a one-line shell script that cats this file, so on a
+    Pentium III nothing heavier than `cat` runs every fifteen seconds. The widget is what keeps the
+    file current.
+    """
+    return os.path.join(os.path.dirname(cache_path()), 'shulgo-bar.txt')
+
+
+def save_bar(text):
+    """Replace the top-bar line, atomically, 0600.
+
+    Atomically because genmon may read it at any moment and half a line of markup is a parse error
+    in the panel; 0600 because the tooltip names where somebody davens and when they will be there,
+    which is nobody else's business on a shared machine.
+    """
+    try:
+        _write_private(bar_path(), text)
+    except OSError:
+        pass
+
+
+def clear_bar():
+    """Take the line away. Called on quit, so the panel does not keep showing times forever."""
+    try:
+        os.unlink(bar_path())
+    except OSError:
+        pass
 
 
 def _read_lines(path):
