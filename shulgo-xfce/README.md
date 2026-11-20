@@ -196,6 +196,47 @@ Two things block it going anywhere:
 2. **ShulGo has no licence yet**, and Arch requires a custom licence be shipped under
    `/usr/share/licenses/`. Until somebody chooses one, this cannot go to the AUR.
 
+## A line on the top bar
+
+The tray icon and its menu are the widget. The line beside the clock is an extra, off switchable in
+Settings, and it exists because on a small screen the icon is easy to miss and a glance at the clock
+is not:
+
+```
+                                      4:32 PM Mincha · in 12 min   🕑 1:45 PM
+```
+
+It is drawn by `xfce4-genmon-plugin`, which runs a command every so often and shows what it prints.
+The command is `shulgo-bar`, and all it does is `cat` one file:
+
+```
+~/.cache/jewbuntu/shulgo-bar.txt
+```
+
+The widget rewrites that file on every redraw — which includes the minute tick — so the countdown
+moves without the panel ever starting a Python interpreter. That is the whole design: on a Pentium
+III, a Python process every fifteen seconds is seconds of a 1 GHz CPU spent on one short line.
+
+To add it by hand: right-click the panel → **Panel** → **Add New Items** → **Generic Monitor**, then
+set **Command** to `shulgo-bar` and the period to 15 seconds. The Jewbuntu ISO ships a panel preset
+so nobody has to.
+
+Three things about it are deliberate.
+
+**It marks a stale list rather than a fresh one.** When ShulGo cannot be reached the line reads
+`4:32 PM Mincha (old)` — the countdown is dropped to make room, because a list that is quietly
+frozen but looks current is worse than one with no countdown on it. The full reason is in the
+tooltip.
+
+**It says when it has stopped being true.** `shulgo-bar` checks the file's age itself, and if the
+widget is no longer running it prints `ShulGo: not running` instead of the last line it wrote. A
+panel that goes on showing Tuesday's mincha is the kind of fault nobody reports, because it looks
+exactly like a widget that is working.
+
+**Clicking it does nothing.** genmon can run a command on click, but there is no cheap way to pop
+the tray icon's menu from a shell command, and anything else would start a second interpreter per
+click. The icon is two inches away and already has the menu.
+
 ## What's in the menu
 
 The next minyanim near your saved place, with countdowns worked out on this machine. Then three

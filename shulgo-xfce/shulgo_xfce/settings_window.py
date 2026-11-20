@@ -136,6 +136,11 @@ class SettingsWindow(Gtk.Window):
         grid.attach(self.shiurim_check, 0, row, 2, 1)
         row += 1
 
+        self.bar_check = Gtk.CheckButton(label='A line on the top bar, beside the clock')
+        self.bar_check.set_active(self.values.get('panel-line') == 'yes')
+        grid.attach(self.bar_check, 0, row, 2, 1)
+        row += 1
+
         grid.attach(self._note('Countdowns are worked out on this machine, so ShulGo is only asked '
                                'on the timer above. Each list you switch off is one request fewer '
                                'each time it does.'), 0, row, 2, 1)
@@ -284,6 +289,7 @@ class SettingsWindow(Gtk.Window):
         self.values['show-zmanim'] = 'yes' if self.zmanim_check.get_active() else 'no'
         self.values['show-events'] = 'yes' if self.events_check.get_active() else 'no'
         self.values['show-shiurim'] = 'yes' if self.shiurim_check.get_active() else 'no'
+        self.values['panel-line'] = 'yes' if self.bar_check.get_active() else 'no'
 
         config.save_settings(self.values)
         config.save_api_key(self.key_entry.get_text())

@@ -1,0 +1,26 @@
+# The autostart copy of shulgo-xfce.desktop, for /etc/xdg/autostart.
+#
+# X-XFCE-Autostart-Enabled in the menu entry does nothing on its own: a .desktop file in
+# /usr/share/applications is a menu entry and is never started at login, wherever that key appears
+# in it. Only a file in an autostart directory starts anything, which is why this is a second file
+# rather than a key on the first.
+#
+# It is not hidden, deliberately, so it shows up in Settings -> Session and Startup where anyone who
+# does not want it can untick it. A widget that starts itself and cannot be found to be stopped is
+# worse than one that does not start.
+[Desktop Entry]
+Type=Application
+Name=ShulGo
+GenericName=Minyan finder
+Comment=The next minyan near you in the tray, with today's zmanim
+Exec=shulgo-xfce
+Icon=shulgo
+Terminal=false
+Keywords=minyan;shul;synagogue;zmanim;davening;
+StartupNotify=false
+# Matches GLib.set_prgname('shulgo-xfce') in __main__.py, which is what GTK puts in WM_CLASS.
+# Without the pair, a dock cannot tie the settings window to this entry and shows a generic
+# icon instead of the shul.
+StartupWMClass=shulgo-xfce
+X-XFCE-Autostart-Enabled=true
+X-GNOME-Autostart-enabled=true

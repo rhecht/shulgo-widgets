@@ -27,7 +27,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gio, Gtk  # noqa: E402
 
-from . import config, icon as icons  # noqa: E402
+from . import bar, config, icon as icons  # noqa: E402
 from .api import Cache, ShulGoApi  # noqa: E402
 from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noqa: E402
 from . import link  # noqa: E402
@@ -413,6 +413,7 @@ class ShulGoTray:
             self._set(self.footer, '')
             self.footer.hide()
             self._panel('')
+            self._bar(None, no_place=True)
 
             return
 
@@ -476,6 +477,7 @@ class ShulGoTray:
 
         headline = pick_headline(rows)
         self._panel(countdown_short(minutes_until(headline.get('starts_at'))) if headline else '')
+        self._bar(headline, rows=rows, notice=notice)
 
     def _draw_zmanim(self):
         if self.settings.get('show-zmanim') != 'yes':
@@ -588,6 +590,32 @@ class ShulGoTray:
         if self.status_icon is not None:
             self.status_icon.set_tooltip_text('ShulGo — %s' % text if text else 'ShulGo')
 
+    def _bar(self, headline, rows=(), notice=None, no_place=False):
+        """Keep the top-bar file current, for xfce4-genmon-plugin to cat.
+
+        Written on every redraw, which includes the minute tick, so the countdown beside the clock
+        moves without the panel ever starting a Python interpreter. Switched off in settings, the
+        file goes away rather than sitting there growing stale: a line that is quietly frozen is
+        worse than no line, because somebody will read it on their way out of the door.
+        """
+        if self.settings.get('panel-line') != 'yes':
+            config.clear_bar()
+
+            return
+
+        place = config.saved_place(self.settings)
+        config.save_bar(bar.document(
+            headline=headline,
+            rows=rows,
+            zmanim=zmanim_list(self.state['zmanim']),
+            place=None if no_place else (place[2] if place else None),
+            has_key=self.api.has_key,
+            stale=bool(notice),
+            stale_since=notice['short'] if notice else None,
+            window_minutes=config.as_int(self.settings, 'window-minutes'),
+            pending=self._pending is not None,
+        ))
+
     # ---- what the menu does ----------------------------------------------------------------
 
     def _on_minyan(self, item):
@@ -644,4 +672,5 @@ class ShulGoTray:
 
     def _on_quit(self, *_):
         self.cache.save()
+        config.clear_bar()
         Gtk.main_quit()

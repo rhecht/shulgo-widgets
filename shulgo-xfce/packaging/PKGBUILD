@@ -31,6 +31,9 @@ depends=('python' 'python-gobject' 'gtk3' 'libayatana-appindicator')
 # Deliberately NOT depending on xfce4-statusnotifier-plugin: Xfce 4.18's own systray (xfce4-panel's
 # libsystray) already contains the StatusNotifierWatcher, and that package does not exist in Arch
 # Linux 32 at all. Depending on it would make this uninstallable to no purpose.
+# The line beside the clock is optional and the widget is complete without it: the tray icon and its
+# menu are the widget. genmon is what draws the line, so it is an optdepend rather than a depend.
+optdepends=('xfce4-genmon-plugin: the line beside the clock on the panel')
 makedepends=()
 checkdepends=()
 source=("$pkgname-$pkgver.tar.gz::https://github.com/rhecht/shulgo-widgets/archive/refs/tags/xfce-v$pkgver.tar.gz")
@@ -55,8 +58,16 @@ package() {
   install -Dm644 shulgo_xfce/*.py "$pkgdir/usr/lib/shulgo-xfce/shulgo_xfce/"
 
   install -Dm755 bin/shulgo-xfce "$pkgdir/usr/bin/shulgo-xfce"
+  # What Generic Monitor runs for the line beside the clock. A shell script that cats one file:
+  # nothing starts an interpreter every fifteen seconds, which is the point on a Pentium III.
+  install -Dm755 bin/shulgo-bar "$pkgdir/usr/bin/shulgo-bar"
   install -Dm644 packaging/shulgo-xfce.desktop \
     "$pkgdir/usr/share/applications/shulgo-xfce.desktop"
+  # Starts at login. The menu entry above will not do that however it is marked — only a file in an
+  # autostart directory starts anything — and it is left visible in Session and Startup so it can be
+  # unticked by anyone who would rather launch it themselves.
+  install -Dm644 packaging/shulgo-xfce-autostart.desktop \
+    "$pkgdir/etc/xdg/autostart/shulgo-xfce.desktop"
   install -Dm644 packaging/shulgo.svg \
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/shulgo.svg"
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"

@@ -1,0 +1,28 @@
+#!/bin/sh
+# What xfce4-genmon-plugin runs for the line beside the clock.
+#
+# This is deliberately the cheapest thing that could work: the widget keeps a file current, and the
+# panel only reads it. Nothing here starts an interpreter, which on a Pentium III is the whole
+# argument — a Python process every fifteen seconds is seconds of a 1 GHz CPU for one short line.
+#
+# Add it to the panel with: right-click the panel -> Panel -> Add New Items -> Generic Monitor, then
+# set Command to  shulgo-bar  and the period to 15 seconds. Or ship the panel preset, which the
+# Jewbuntu ISO does.
+
+set -eu
+
+file="${XDG_CACHE_HOME:-$HOME/.cache}/jewbuntu/shulgo-bar.txt"
+
+[ -f "$file" ] || exit 0
+
+# A file older than a few minutes means the widget is not running any more: it is written on every
+# minute tick while it is. Showing its last line forever would be the worst of the options, because
+# it looks current — somebody reads "Mincha 4:32 · in 12 min" on the way out of the door and the
+# line has been frozen since Tuesday. Say so instead.
+if [ -n "$(find "$file" -mmin +3 2>/dev/null)" ]; then
+    echo '<txt>ShulGo: not running</txt>'
+    echo '<tool>The ShulGo widget is not running, so this line stopped being true. Start it from the menu, or log out and in.</tool>'
+    exit 0
+fi
+
+cat "$file"

@@ -13,6 +13,7 @@ failures that missed the silent failure in front of it was not much of a check.
 """
 
 import os
+import shutil
 import sys
 
 VERSION = '1.0.0'
@@ -59,6 +60,24 @@ def check():
     lines.append('place: %s' % (place[2] if place else 'not chosen yet'))
     lines.append('settings: %s' % config.settings_path())
     lines.append('cache: %s' % config.cache_path())
+
+    # The same silent failure as the icon, wearing a different hat: the setting can be on and the
+    # file written every minute, and the panel still shows nothing, because the helper is not on
+    # PATH or Generic Monitor was never added to the panel. Neither of those is visible from inside
+    # the widget, so say what IS visible and let the person match it against their panel.
+    settings = config.load_settings()
+    if settings.get('panel-line') == 'yes':
+        helper = shutil.which('shulgo-bar')
+        written = os.path.exists(config.bar_path())
+        lines.append('top bar: on — %s' % (
+            'writing %s' % config.bar_path() if written
+            else 'nothing written yet (it appears on the first refresh)'))
+        lines.append('  helper: %s' % (
+            helper or 'shulgo-bar NOT on PATH — the panel has nothing to run'))
+        lines.append('  panel: add Generic Monitor to the panel, command  shulgo-bar , every 15 s. '
+                     'This cannot be checked from here.')
+    else:
+        lines.append('top bar: off (Settings → “A line on the top bar”)')
 
     print('\n'.join(lines))
 
