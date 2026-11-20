@@ -13,9 +13,9 @@ import threading
 import gi
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
-from . import config, icon as icons  # noqa: E402
+from . import config, icon as icons, layout  # noqa: E402
 
 MODES = (('drive', 'Driving'), ('walk', 'Walking'))
 TEFILLOS = (
@@ -36,9 +36,31 @@ class SettingsWindow(Gtk.Window):
         self._looking = None
 
         self.values = config.load_settings()
-        self.set_default_size(460, -1)
         self.set_border_width(12)
         self.connect('destroy', self._finish)
+
+        # Two columns at this width, not one tall one, and never taller than the screen. It used to
+        # ask for 460 wide and whatever height it liked, which on a 1280x800 Pentium III put Close
+        # and Save below the bottom edge — and those machines are usually 1024x768 or smaller.
+        # layout.window_size does the arithmetic, where tests/test_layout.py can reach it.
+        screen = self._monitor()
+        width, height = layout.window_size(*screen)
+        self.set_default_size(width, height)
+
+        # A ceiling as well, so dragging the window taller cannot put the buttons off-screen again.
+        # It is the room on the screen, NOT the height opened at: those differ, and using the
+        # opened height here would have made the window unresizable, which is a worse fault than
+        # the one being fixed. Belt and braces either way — the default size above is what actually
+        # guarantees the fit, since a window manager is free to ignore a maximum-size hint.
+        ceiling = layout.height_ceiling(screen[1], screen[3])
+        if ceiling:
+            try:
+                hints = Gdk.Geometry()
+                hints.max_width = 32767
+                hints.max_height = ceiling
+                self.set_geometry_hints(None, hints, Gdk.WindowHints.MAX_SIZE)
+            except Exception:
+                pass
 
         # Give the window its own icon rather than relying on a dock matching the .desktop file.
         # From a checkout the themed name resolves to nothing, exactly as it did for the tray, so
@@ -54,61 +76,77 @@ class SettingsWindow(Gtk.Window):
             # A window without its own icon is a cosmetic loss, not a reason to fail to open.
             pass
 
-        grid = Gtk.Grid(row_spacing=8, column_spacing=10)
-        self.add(grid)
-        row = 0
+        # The body sits in a scroller and the buttons sit outside it, and that is the part which
+        # makes the cap above mean anything. set_default_size is only a request: a window whose
+        # child insists on 850 px gets 850 px however little was asked for, which is how Close and
+        # Save ended up off the bottom of the screen. A scroller may be shorter than its contents,
+        # so the window can be as short as the screen requires and the buttons are still on it —
+        # at 800x600, and at a font size nobody here has tried.
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.add(outer)
 
-        # ---- the key
-        grid.attach(self._heading('Your ShulGo API key'), 0, row, 2, 1)
-        row += 1
+        scroller = Gtk.ScrolledWindow()
+        # NEVER across: this window was made wider precisely so nothing needs scrolling sideways.
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.set_vexpand(True)
+        outer.pack_start(scroller, True, True, 0)
+
+        columns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20, homogeneous=True)
+        scroller.add(columns)
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        columns.pack_start(left, True, True, 0)
+        columns.pack_start(right, True, True, 0)
+
+        # ---- left: the key, then where you are
+        left.pack_start(self._heading('Your ShulGo API key'), False, False, 0)
         self.key_entry = Gtk.Entry()
         self.key_entry.set_text(config.load_api_key())
         self.key_entry.set_visibility(False)
         self.key_entry.set_placeholder_text('sg_live_…')
         self.key_entry.set_hexpand(True)
-        grid.attach(self.key_entry, 0, row, 2, 1)
-        row += 1
+        left.pack_start(self.key_entry, False, False, 0)
+
         # NOT "Admin › System › API & apps": that is where an administrator makes a key, and an
         # ordinary person running this widget cannot reach it. Telling them to go somewhere they
         # have no access to is worse than saying nothing.
         link_button = Gtk.Button(label='Link this computer…')
         link_button.connect('clicked', self._on_link)
         link_button.set_halign(Gtk.Align.START)
-        grid.attach(link_button, 0, row, 2, 1)
-        row += 1
+        left.pack_start(link_button, False, False, 0)
 
-        grid.attach(self._note('Linking shows a short code to type on your phone, and this computer '
-                               'gets its own key — nothing long to copy. Or ask your ShulGo '
-                               'administrator for a key and paste it above. Either way it is kept '
-                               'in ~/.config/jewbuntu/shulgo.conf, readable only by you — never in '
-                               'dconf.'), 0, row, 2, 1)
-        row += 1
+        left.pack_start(self._note('Linking shows a short code to type on your phone, and this '
+                                   'computer gets its own key. Or paste a key from your ShulGo '
+                                   'administrator. Either way it is kept in '
+                                   '~/.config/jewbuntu/shulgo.conf, readable only by you — never '
+                                   'in dconf.'), False, False, 0)
 
-        # ---- where
-        grid.attach(self._heading('Where you daven'), 0, row, 2, 1)
-        row += 1
+        left.pack_start(self._heading('Where you daven'), False, False, 0)
+        finding = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.place_entry = Gtk.Entry()
         self.place_entry.set_placeholder_text('A city, neighbourhood or zip code')
         self.place_entry.set_text(self.values.get('place', ''))
         self.place_entry.set_hexpand(True)
         self.place_entry.connect('activate', lambda *_: self._look())
-        grid.attach(self.place_entry, 0, row, 1, 1)
+        finding.pack_start(self.place_entry, True, True, 0)
         look = Gtk.Button(label='Search')
         look.connect('clicked', lambda *_: self._look())
-        grid.attach(look, 1, row, 1, 1)
-        row += 1
+        finding.pack_start(look, False, False, 0)
+        left.pack_start(finding, False, False, 0)
+
         self.found_box = Gtk.ComboBoxText()
         self.found_box.set_hexpand(True)
         self.found_box.connect('changed', self._on_pick)
-        grid.attach(self.found_box, 0, row, 2, 1)
-        row += 1
+        left.pack_start(self.found_box, False, False, 0)
         self.place_note = self._note(self._place_summary())
-        grid.attach(self.place_note, 0, row, 2, 1)
-        row += 1
+        left.pack_start(self.place_note, False, False, 0)
 
-        # ---- the rest
-        grid.attach(self._heading('What to show'), 0, row, 2, 1)
-        row += 1
+        # ---- right: what to show
+        right.pack_start(self._heading('What to show'), False, False, 0)
+        grid = Gtk.Grid(row_spacing=8, column_spacing=10)
+        right.pack_start(grid, False, False, 0)
+        row = 0
+
         self.window_spin = self._spin(15, 360, config.as_int(self.values, 'window-minutes'), 15)
         row = self._labelled(grid, row, 'Look ahead (minutes)', self.window_spin)
         self.length_spin = self._spin(1, 12, config.as_int(self.values, 'list-length'), 1)
@@ -123,29 +161,25 @@ class SettingsWindow(Gtk.Window):
 
         self.zmanim_check = Gtk.CheckButton(label='Today’s zmanim in the menu')
         self.zmanim_check.set_active(self.values.get('show-zmanim') == 'yes')
-        grid.attach(self.zmanim_check, 0, row, 2, 1)
-        row += 1
+        right.pack_start(self.zmanim_check, False, False, 0)
 
         self.events_check = Gtk.CheckButton(label='Upcoming events near you')
         self.events_check.set_active(self.values.get('show-events') == 'yes')
-        grid.attach(self.events_check, 0, row, 2, 1)
-        row += 1
+        right.pack_start(self.events_check, False, False, 0)
 
         self.shiurim_check = Gtk.CheckButton(label='Shiurim near you')
         self.shiurim_check.set_active(self.values.get('show-shiurim') == 'yes')
-        grid.attach(self.shiurim_check, 0, row, 2, 1)
-        row += 1
+        right.pack_start(self.shiurim_check, False, False, 0)
 
         self.bar_check = Gtk.CheckButton(label='A line on the top bar, beside the clock')
         self.bar_check.set_active(self.values.get('panel-line') == 'yes')
-        grid.attach(self.bar_check, 0, row, 2, 1)
-        row += 1
+        right.pack_start(self.bar_check, False, False, 0)
 
-        grid.attach(self._note('Countdowns are worked out on this machine, so ShulGo is only asked '
-                               'on the timer above. Each list you switch off is one request fewer '
-                               'each time it does.'), 0, row, 2, 1)
-        row += 1
+        right.pack_start(self._note('Countdowns are worked out here, so ShulGo is only asked on the '
+                                    'timer above. Each list you switch off is one request fewer '
+                                    'when it does.'), False, False, 0)
 
+        # ---- the buttons, outside the scroller so they are always on screen
         buttons = Gtk.Box(spacing=8)
         buttons.set_halign(Gtk.Align.END)
         close = Gtk.Button(label='Close')
@@ -155,9 +189,41 @@ class SettingsWindow(Gtk.Window):
         save.connect('clicked', self._save)
         buttons.add(close)
         buttons.add(save)
-        grid.attach(buttons, 0, row, 2, 1)
+        outer.pack_start(buttons, False, False, 0)
 
         self.show_all()
+
+    # ---- the screen ------------------------------------------------------------------------
+
+    def _monitor(self):
+        """(work width, work height, screen width, screen height) — zeros when it can't be found.
+
+        Both pairs, because layout.window_size compares them: a work area smaller than the screen
+        is a desktop that has published its panels, and one equal to the screen means they are
+        either absent or invisible to us.
+
+        Zeros on any failure, which layout.window_size reads as "assume an ordinary screen". A
+        settings window that will not open is a far worse outcome than one sized for 1024x768 on a
+        machine that turned out to have more room.
+        """
+        try:
+            display = Gdk.Display.get_default()
+
+            if hasattr(display, 'get_primary_monitor'):          # GTK 3.22 and after
+                monitor = display.get_primary_monitor() or display.get_monitor(0)
+                work, whole = monitor.get_workarea(), monitor.get_geometry()
+
+                return work.width, work.height, whole.width, whole.height
+
+            # Older GTK3: the same two rectangles, asked for the other way round.
+            screen = Gdk.Screen.get_default()
+            which = screen.get_primary_monitor()
+            work = screen.get_monitor_workarea(which)
+            whole = screen.get_monitor_geometry(which)
+
+            return work.width, work.height, whole.width, whole.height
+        except Exception:
+            return 0, 0, 0, 0
 
     # ---- small builders --------------------------------------------------------------------
 
@@ -173,7 +239,11 @@ class SettingsWindow(Gtk.Window):
         label = Gtk.Label(label=text)
         label.set_xalign(0.0)
         label.set_line_wrap(True)
-        label.set_max_width_chars(56)
+        # 40, not 56: these sit in a column half the window wide now, and a wrapping label's
+        # minimum width is what this sets — too generous a figure here and the window is forced
+        # wider than the screen it was just measured against.
+        label.set_max_width_chars(40)
+        label.set_width_chars(24)
         label.get_style_context().add_class('dim-label')
 
         return label
@@ -195,6 +265,10 @@ class SettingsWindow(Gtk.Window):
     def _labelled(self, grid, row, text, widget):
         label = Gtk.Label(label=text)
         label.set_xalign(0.0)
+        # Allowed to wrap, so a long one ("Minyanim in the menu (next start)") costs a second line
+        # in a column with height to spare rather than forcing the whole window wider.
+        label.set_line_wrap(True)
+        label.set_max_width_chars(22)
         grid.attach(label, 0, row, 1, 1)
         widget.set_hexpand(True)
         grid.attach(widget, 1, row, 1, 1)
