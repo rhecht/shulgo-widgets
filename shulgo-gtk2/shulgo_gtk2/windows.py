@@ -198,7 +198,16 @@ class LinkWindow(_Window):
         self.window.add(box)
 
         self._say(u'<b>Starting…</b>', u'')
+        # The tray does the asking; this is how its answers reach the window. Without it the window
+        # said "Waiting for you to approve it" for ever, even after the link had gone through.
+        tray._link_window = self
         self._start()
+
+    def _on_destroy(self, *ignored):
+        if getattr(self.tray, '_link_window', None) is self:
+            self.tray._link_window = None
+
+        return False
 
     def _say(self, heading, body, code=u''):
         self.heading.set_markup(heading)
@@ -243,3 +252,20 @@ class LinkWindow(_Window):
             u'<b>Type this code at %s</b>' % escape_markup(pending.verification_uri),
             escape_markup(link.words(link.PENDING, pending)),
             u'<span size="xx-large" weight="bold">%s</span>' % escape_markup(pending.user_code))
+
+    def show_state(self, state, pending):
+        u"""What the tray's last poll meant, for whoever is still looking at this window."""
+        words = escape_markup(link.words(state, pending))
+        if state == link.DONE:
+            self._say(u'<b>Linked</b>', words)
+        elif state == link.DENIED:
+            self._say(u'<b>Turned down</b>', words)
+        elif state == link.EXPIRED:
+            self._say(u'<b>Code ran out</b>', words)
+        elif state == link.ERROR:
+            # Still being asked — the tray polls on after an error — so the code stays up.
+            self._say(
+                u'<b>Type this code at %s</b>' % escape_markup(pending.verification_uri), words,
+                u'<span size="xx-large" weight="bold">%s</span>' % escape_markup(pending.user_code))
+        else:
+            self._show_pending()

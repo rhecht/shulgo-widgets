@@ -36,6 +36,16 @@ from .fmt import (
 )
 from .pick import headline as pick_headline, still_ahead
 
+# Bubbles are a nicety, not a dependency. python-notify is on a stock 7.10 desktop, but not in the
+# build container, not on a stripped install, and its init() fails with no notification daemon. Any
+# of those leaves the widget exactly as it was before bubbles existed, rather than not starting.
+try:
+    import pynotify
+    if not pynotify.init(u'ShulGo'):
+        pynotify = None
+except Exception:
+    pynotify = None
+
 # Milliseconds. The countdown is redone locally every minute; the network is asked far less often.
 TICK_MS = 60 * 1000
 
@@ -57,6 +67,26 @@ def _open(uri):
             continue
 
     return False
+
+
+def bubble(status_icon, summary, body):
+    u"""A libnotify bubble pointing at the tray icon. False when there is no way to show one.
+
+    Never raises: this runs on the main loop straight after a link is saved, and an exception here
+    would be the same kind of fault as the one that lost an approved key — a traceback in the middle
+    of an answer, with whatever comes after it never done.
+    """
+    if pynotify is None:
+        return False
+    try:
+        path = icon_path()
+        note = pynotify.Notification(summary, body, path and ('file://' + path) or 'gtk-home')
+        if status_icon is not None and hasattr(note, 'attach_to_status_icon'):
+            note.attach_to_status_icon(status_icon)
+
+        return bool(note.show())
+    except Exception:
+        return False
 
 
 def icon_path():
@@ -100,6 +130,8 @@ class Tray(object):
         self._work = None
         self._pending = None
         self._pending_timer = None
+        # The open "Link this computer" window, if there is one, so the answer reaches it too.
+        self._link_window = None
 
         self.icon = gtk.StatusIcon()
         path = icon_path()
@@ -388,7 +420,9 @@ class Tray(object):
         if saved is None:
             return
 
-        self._pending = link.Linking(saved)
+        # resume, not the constructor: the file holds a deadline, not a duration, and the
+        # constructor read it as a fresh ten-minute code.
+        self._pending = link.Linking.resume(saved)
         self._poll_pending()
 
     def _poll_pending(self):
@@ -406,23 +440,40 @@ class Tray(object):
         if self._pending is None:
             return False
 
-        state = self._pending.absorb(answer)
+        pending = self._pending
+        state = pending.absorb(answer)
         if state == link.DONE:
-            self.api.reconfigure(api_key=self._pending.api_key)
-            config.save_api_key(self._pending.api_key)
+            # `key`, which is what link.Linking calls it. This read `api_key` and raised
+            # AttributeError on the one answer that mattered — after ShulGo had minted the key and
+            # before it was written down — so an approved computer stayed "not linked" and the
+            # key, which the server hands out once, was gone.
+            config.save_api_key(pending.key)
             config.clear_pending()
             self._pending = None
+            self.api.reconfigure(api_key=pending.key)
             self.refresh(fresh=True)
+            self._notify(u'This computer is linked to ShulGo',
+                         u'Click the ShulGo icon to see the next minyanim.')
         elif state in (link.DENIED, link.EXPIRED):
             config.clear_pending()
             self._pending = None
+            self._notify(state == link.DENIED and u'ShulGo link turned down'
+                         or u'ShulGo link code ran out',
+                         u'%s To try again, click the ShulGo icon and choose “Link this computer…”.'
+                         % link.words(state, pending))
         else:
             config.save_pending(self._pending.device_code, self._pending.user_code,
                                 self._pending.expires_at, self._pending.interval)
             gobject.timeout_add(max(1, self._pending.interval) * 1000, self._poll_pending)
         self._draw()
+        if self._link_window is not None:
+            self._link_window.show_state(state, pending)
 
         return False
+
+    def _notify(self, summary, body):
+        u"""Separate so a test can listen in without a notification daemon."""
+        return bubble(self.icon, summary, body)
 
 
 def main():

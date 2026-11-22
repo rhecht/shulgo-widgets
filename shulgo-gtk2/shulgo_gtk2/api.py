@@ -318,7 +318,7 @@ class ShulGoApi(object):
             return {
                 u'ok': False,
                 u'code': u'no_key',
-                u'message': u'Add your ShulGo API key in Settings to see minyanim.',
+                u'message': u'Not linked yet. Click the ShulGo icon and choose “Link this computer…”.',
                 u'status': 0,
             }
 

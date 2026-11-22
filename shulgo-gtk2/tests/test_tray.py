@@ -31,7 +31,10 @@ if not os.environ.get('DISPLAY'):
         'or use `make check-display`.\n')
     sys.exit(2)
 
-from shulgo_gtk2 import config
+import gtk
+
+from shulgo_gtk2 import config, link
+from shulgo_gtk2 import tray as tray_module
 from shulgo_gtk2.tray import Tray, icon_path
 
 
@@ -200,6 +203,215 @@ class TheWindowsAndTheMenu(unittest.TestCase):
         self.assertTrue(u'internet' in words.lower() or u'reach' in words.lower(), words)
         self.assertTrue(u'administrator' not in words.lower(), words)
         window.window.destroy()
+
+
+class TheLinkingFinishes(unittest.TestCase):
+    u"""Tray._pending_answer, which nothing had ever called.
+
+    It read `self._pending.api_key` where link.Linking says `key`, so the one answer that carries the
+    key raised AttributeError — on a real 7.10 install, after an administrator had approved it — and
+    the key ShulGo hands out once was lost along with the rest of that function. link.py was tested
+    to the hilt on its own; what the tray DID with its answer was not tested at all.
+
+    The answers are fed in directly: nothing here reaches the network or a notification daemon.
+    """
+
+    KEY = u'sg_live_' + u'0123456789abcdef' * 2 + u'01234567'
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix='shulgo-link-')
+        self.saved = {}
+        for name in ('HOME', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'SHULGO_API_KEY'):
+            self.saved[name] = os.environ.get(name)
+        os.environ['HOME'] = self.home
+        os.environ['XDG_CONFIG_HOME'] = os.path.join(self.home, 'config')
+        os.environ['XDG_CACHE_HOME'] = os.path.join(self.home, 'cache')
+        if 'SHULGO_API_KEY' in os.environ:
+            del os.environ['SHULGO_API_KEY']
+
+        self.tray = Tray()
+        self.bubbles = []
+        self.tray._notify = lambda summary, body: self.bubbles.append((summary, body))
+
+        self.tray._pending = link.Linking({
+            u'device_code': u'dev-123', u'user_code': u'ABCD-EFGH',
+            u'expires_in': 1200, u'interval': 5})
+        config.save_pending(u'dev-123', u'ABCD-EFGH', self.tray._pending.expires_at, 5)
+        self.assertTrue(os.path.exists(config.pending_path()))
+
+    def tearDown(self):
+        for name in self.saved:
+            if self.saved[name] is None:
+                if name in os.environ:
+                    del os.environ[name]
+            else:
+                os.environ[name] = self.saved[name]
+        shutil.rmtree(self.home, True)
+
+    def test_an_approval_saves_the_key_and_forgets_the_code(self):
+        self.tray._pending_answer({u'ok': True, u'data': {u'api_key': self.KEY}})
+
+        self.assertEqual(config.load_api_key(), self.KEY)
+        self.assertTrue(os.path.exists(config.key_path()), 'shulgo.conf was not written')
+        self.assertTrue(not os.path.exists(config.pending_path()),
+                        'the linking file outlived the link')
+        self.assertTrue(self.tray._pending is None)
+        self.assertTrue(self.tray.api.has_key, 'the running widget did not take the new key')
+
+    def test_once_linked_the_widget_stops_saying_it_is_not(self):
+        u"""What the owner actually saw: approved, and still told it wasn't linked."""
+        self.tray._pending_answer({u'ok': True, u'data': {u'api_key': self.KEY}})
+
+        # Held in a name: a menu nothing refers to is destroyed at once, taking its labels with it.
+        # And PyGTK hands back UTF-8 bytes; compared with unicode as they are, every test passes.
+        menu = self.tray._build_menu()
+        labels = [item.get_child().get_text().decode('utf-8')
+                  for item in menu.get_children()
+                  if isinstance(item.get_child(), gtk.Label)]
+        self.assertTrue(u'Refresh now' in labels, labels)
+        self.assertTrue(u'Link this computer…' not in labels, labels)
+        self.assertTrue(u'not linked' not in _read(config.bar_path()).lower(),
+                        _read(config.bar_path()))
+
+    def test_an_approval_says_so_in_a_bubble(self):
+        self.tray._pending_answer({u'ok': True, u'data': {u'api_key': self.KEY}})
+        self.assertEqual(len(self.bubbles), 1, self.bubbles)
+        self.assertTrue(u'linked' in self.bubbles[0][0].lower(), self.bubbles)
+
+    def test_a_refusal_forgets_the_code_and_keeps_no_key(self):
+        self.tray._pending_answer({u'ok': False, u'code': u'access_denied'})
+
+        self.assertTrue(not os.path.exists(config.pending_path()))
+        self.assertTrue(not os.path.exists(config.key_path()))
+        self.assertTrue(self.tray._pending is None)
+        self.assertEqual(len(self.bubbles), 1, self.bubbles)
+        self.assertTrue(u'turned down' in self.bubbles[0][0].lower(), self.bubbles)
+        self.assertTrue(u'Link this computer' in self.bubbles[0][1], self.bubbles)
+
+    def _ran_out(self, code):
+        self.tray._pending_answer({u'ok': False, u'code': code})
+
+        self.assertTrue(not os.path.exists(config.pending_path()), code)
+        self.assertTrue(not os.path.exists(config.key_path()), code)
+        self.assertTrue(self.tray._pending is None, code)
+        self.assertEqual(len(self.bubbles), 1, self.bubbles)
+        self.assertTrue(u'ran out' in self.bubbles[0][0].lower(), self.bubbles)
+
+    def test_an_expired_code_forgets_the_code_and_keeps_no_key(self):
+        self._ran_out(u'expired_token')
+
+    def test_a_used_up_code_counts_as_expired(self):
+        self._ran_out(u'invalid_grant')
+
+    def test_still_waiting_keeps_the_code_and_says_nothing(self):
+        self.tray._pending_answer({u'ok': False, u'code': u'authorization_pending'})
+
+        self.assertTrue(os.path.exists(config.pending_path()))
+        self.assertTrue(self.tray._pending is not None)
+        self.assertEqual(self.bubbles, [])
+
+    def test_an_open_link_window_hears_the_answer(self):
+        u"""It used to say "Waiting for you to approve it" for ever, link or no link."""
+        from shulgo_gtk2.windows import LinkWindow
+
+        class StubApi(object):
+            has_key = False
+
+            def device_start(self, name, device_name=None):
+                return {u'ok': False, u'code': u'network', u'message': u''}
+
+        real = self.tray.api
+        self.tray.api = StubApi()
+        window = LinkWindow(self.tray)
+        self.tray.api = real
+        self.assertTrue(self.tray._link_window is window)
+
+        self.tray._pending_answer({u'ok': True, u'data': {u'api_key': self.KEY}})
+        self.assertTrue(u'Linked' in window.heading.get_text(), window.heading.get_text())
+
+        window.window.destroy()
+        self.assertTrue(self.tray._link_window is None)
+
+    def test_a_linking_left_over_from_before_a_reboot_keeps_its_own_deadline(self):
+        u"""The file holds a deadline; it was read as a fresh ten-minute code."""
+        import time
+        config.save_pending(u'dev-456', u'WXYZ-1234', time.time() + 3 * 86400, 5)
+        self.tray._pending = None
+        original = self.tray._poll_pending
+        self.tray._poll_pending = lambda: False
+        try:
+            self.tray._watch_pending()
+        finally:
+            self.tray._poll_pending = original
+        self.assertTrue(self.tray._pending.seconds_left() > 86400,
+                        self.tray._pending.seconds_left())
+
+
+class BubblesAreOptional(unittest.TestCase):
+    u"""python-notify is not in the build container and not guaranteed on a stripped install."""
+
+    def test_no_pynotify_is_not_an_error(self):
+        saved = tray_module.pynotify
+        tray_module.pynotify = None
+        try:
+            self.assertEqual(tray_module.bubble(None, u'a', u'b'), False)
+        finally:
+            tray_module.pynotify = saved
+
+    def test_a_broken_notification_daemon_is_not_an_error(self):
+        class Broken(object):
+            class Notification(object):
+                def __init__(self, *args):
+                    pass
+
+                def attach_to_status_icon(self, icon):
+                    pass
+
+                def show(self):
+                    raise RuntimeError('no daemon')
+
+        saved = tray_module.pynotify
+        tray_module.pynotify = Broken
+        try:
+            self.assertEqual(tray_module.bubble(None, u'a', u'b'), False)
+        finally:
+            tray_module.pynotify = saved
+
+    def test_the_bubble_points_at_the_tray_icon(self):
+        seen = []
+
+        class Recorder(object):
+            class Notification(object):
+                def __init__(self, summary, body, icon):
+                    seen.append((summary, body, icon))
+
+                def attach_to_status_icon(self, icon):
+                    seen.append(icon)
+
+                def show(self):
+                    return True
+
+        saved = tray_module.pynotify
+        tray_module.pynotify = Recorder
+        try:
+            import gtk
+            icon = gtk.StatusIcon()
+            self.assertEqual(tray_module.bubble(icon, u'Linked', u'Body'), True)
+        finally:
+            tray_module.pynotify = saved
+        self.assertEqual(seen[0][:2], (u'Linked', u'Body'))
+        self.assertTrue(seen[1] is icon)
+
+
+def _read(path):
+    try:
+        handle = open(path, 'rb')
+    except EnvironmentError:
+        return u''
+    try:
+        return handle.read().decode('utf-8')
+    finally:
+        handle.close()
 
 
 if __name__ == '__main__':
