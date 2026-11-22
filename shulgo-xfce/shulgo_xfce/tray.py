@@ -20,6 +20,7 @@ AppIndicator3, and finally Gtk.StatusIcon. StatusIcon is deprecated and GTK4 dro
 GTK3 and on a 25-year-old laptop a deprecated thing that works beats a modern thing that is missing.
 """
 
+import os
 import threading
 
 import gi
@@ -27,7 +28,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gio, Gtk  # noqa: E402
 
-from . import bar, config, icon as icons  # noqa: E402
+from . import bar, config, icon as icons, sni  # noqa: E402
 from .api import Cache, ShulGoApi  # noqa: E402
 from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noqa: E402
 from . import link  # noqa: E402
@@ -59,6 +60,34 @@ def _load_indicator():
             continue
 
     return None, None
+
+
+def choose_tray(have_library, settings):
+    """Which kind of tray item to own, and in a phrase why. See sni.plan, which decides it.
+
+    The facts sni.plan needs are gathered here rather than there because two of them are not free:
+    importing the libdbusmenu typelibs, and asking the bus who is listening. Neither is done unless
+    the answer could change anything. On X11 with nothing set by hand the library wins whatever
+    those two say, and a Pentium III should not spend a D-Bus round trip finding that out.
+    """
+    forced = (settings.get('tray-item') or '').strip().lower() or None
+    wayland = sni.wayland(os.environ)
+    have_dbusmenu = False
+
+    if wayland or forced == sni.OWN:
+        try:
+            from . import tray_sni
+
+            have_dbusmenu = tray_sni.available()
+        except Exception:
+            # A missing typelib raises here rather than returning False, and the answer is the
+            # same either way: no own item on this machine.
+            pass
+
+    # Whether a tray is actually listening is not asked, and must not be: this runs from an
+    # autostart entry, so at login it is often the compositor that is not ready yet rather than
+    # absent. sni.plan says what asking cost the first time it was tried.
+    return sni.plan(wayland, have_library, have_dbusmenu, forced)
 
 
 class ShulGoTray:
@@ -186,7 +215,31 @@ class ShulGoTray:
 
         indicator, flavour = _load_indicator()
         self.flavour = flavour
-        if indicator is not None:
+        self.indicator = None
+        self.status_icon = None
+        self.own_item = None
+
+        # Which kind of tray item this desktop needs. On X11 this comes back LIBRARY, as it always
+        # did, and the two branches below are the code that has always run there.
+        self.tray_kind, self.tray_reason = choose_tray(indicator is not None, self.settings)
+
+        if self.tray_kind == sni.OWN:
+            try:
+                from . import tray_sni
+
+                self.own_item = tray_sni.OwnItem(
+                    self.menu, 'shulgo-xfce', 'ShulGo', ICON_NAME,
+                    self.icon_dir if self.icon_state == icons.BUNDLED else '')
+            except Exception as problem:
+                # No part of tray_sni has run on a desktop yet, so if it is wrong this is where it
+                # shows. The machine then gets the tray item it would have had before any of this
+                # existed, which on Cutefish is the one that does nothing when clicked — no worse
+                # than today — and anywhere else is the one that works.
+                self.own_item = None
+                self.tray_kind = sni.LIBRARY if indicator is not None else sni.STATUS_ICON
+                self.tray_reason = 'ShulGo’s own item would not start (%s)' % problem
+
+        if self.tray_kind == sni.LIBRARY:
             if self.icon_state == icons.BUNDLED and hasattr(indicator.Indicator, 'new_with_path'):
                 # The StatusNotifierItem protocol carries an IconThemePath for exactly this, and the
                 # panel looks for <path>/<name>.svg directly. Guarded by hasattr because this code
@@ -203,9 +256,7 @@ class ShulGoTray:
             # whole point: the next minyan without opening anything.
             if hasattr(self.indicator, 'set_label'):
                 self.indicator.set_label('', '')
-            self.status_icon = None
-        else:
-            self.indicator = None
+        elif self.tray_kind == sni.STATUS_ICON:
             bundled = icons.bundled_file(self.icon_dir) if self.icon_state == icons.BUNDLED else None
             self.status_icon = (Gtk.StatusIcon.new_from_file(bundled) if bundled
                                 else Gtk.StatusIcon.new_from_icon_name(ICON_NAME))
@@ -595,6 +646,11 @@ class ShulGoTray:
             self.indicator.set_label(text or '', '1h00')
         if self.status_icon is not None:
             self.status_icon.set_tooltip_text('ShulGo — %s' % text if text else 'ShulGo')
+        if self.own_item is not None:
+            # The StatusNotifierItem specification has no label beside the icon — that is an
+            # Ayatana extension — so on this path the headline goes in the tooltip instead. Which
+            # libayatana cannot do at all, since it ignores ToolTip.
+            self.own_item.set_tooltip_body(text or '')
 
     def _bar(self, headline, rows=(), notice=None, no_place=False):
         """Keep the top-bar file current, for xfce4-genmon-plugin to cat.
@@ -677,6 +733,8 @@ class ShulGoTray:
         self._settings_window.present()
 
     def _on_quit(self, *_):
+        if self.own_item is not None:
+            self.own_item.close()
         self.cache.save()
         config.clear_bar()
         Gtk.main_quit()

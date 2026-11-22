@@ -43,9 +43,9 @@ icon's "not found anywhere" branch has not been exercised either, only the other
 
 **The logic is tested. Most of the window still is not.**
 
-162 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
+190 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
 files, where the tray icon comes from, what each device-linking answer means, how big the settings
-window may open and where on the screen it opens, and the rules that decide what you see. Of those, 166 individual wording
+window may open and where on the screen it opens, which kind of tray item to own, and the rules that decide what you see. Of those, 166 individual wording
 cases are checked *against the JavaScript* — see below.
 
 There is still no PyGObject on the machine this is written on, so the GTK code is only ever exercised
@@ -97,6 +97,44 @@ and the hicolor cache rebuilt, the running tray advertised `IconThemePath = /opt
 packaging` over D-Bus and Xfce 4.18's systray drew the icon from it. libayatana-appindicator 0.6.0
 sets the property and the panel honours it, so the `Gtk.StatusIcon`-from-file path stays only as a
 fallback for panels that do not.
+
+## The tray icon that did nothing on Cutefish
+
+Jewbuntu now ships a skin for Cutefish, a Wayland desktop on Debian 13, and there ShulGo's icon
+appeared in the top bar, registered properly, served a complete menu — and did nothing at all when
+clicked.
+
+The cause is older than Cutefish. libayatana-appindicator exports a `StatusNotifierItem` with no
+`ItemIsMenu` property and no `Activate` method, which is not so much a bug as its age: Ayatana's
+design was menu-only, its own panels always showed the menu, and `ItemIsMenu` was added to the
+specification later, by KDE, as a way of saying "I am menu-only, do not call `Activate`". KDE's tray
+copes by showing the menu when `Activate` fails. Cutefish reads `ItemIsMenu`, finds nothing, calls
+`Activate`, gets `UnknownMethod`, and stops. From the outside that is a widget that does not work.
+
+So where a desktop needs one, ShulGo now exports its own item, with `ItemIsMenu` true and `Menu`
+pointing at the menu. **The menu is not rebuilt.** This program keeps one `Gtk.Menu` whose rows are
+relabelled in place, because rebuilding a menu every time a countdown changes is the most expensive
+thing it could do on a 1 GHz machine; `libdbusmenu-gtk3` serves that same menu over the bus, which
+is what libayatana does internally anyway. There is still one menu in the program.
+
+Which kind of item to own is decided in `shulgo_xfce/sni.py`, which imports nothing and is tested,
+and carried out in `shulgo_xfce/tray_sni.py`, which is imported only when the answer is "our own" —
+so on a Pentium III it is never read at all. The rule is deliberately narrow: **on X11 with an
+appindicator library installed, nothing changes**, and that is asserted for every combination of the
+other facts, because Arch Linux 32 and Jewbuntu Classic both work today and a fix for a third
+desktop that disturbed either of them would be a bad trade at any price. Wayland stands in for the
+real condition, which is "this host requires `ItemIsMenu`" — there is no way to ask a host that, and
+it is a fair stand-in, since on Wayland there is no XEmbed tray to fall back to and a
+`StatusNotifierItem` is the only kind of item that can work there.
+
+`python3 -m shulgo_xfce --check` now says which kind of item is in use and why, because the whole
+difficulty of this fault was that nothing on screen distinguished the two. `tray-item` in the
+config file forces either kind, for trying a desktop both ways without rebuilding a package.
+
+None of the D-Bus code has run anywhere: this machine has no D-Bus session, no GTK and no tray, so
+it is written from the specification rather than from a session that worked. That is why creating
+the item is wrapped in a `try` that falls back to the library path — a mistake in it should cost
+Cutefish nothing it is not already missing, and must cost Xfce nothing at all.
 
 ## If every GTK program on Arch Linux 32 is broken, it isn't this one
 

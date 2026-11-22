@@ -44,6 +44,10 @@ DEFAULTS = {
     'show-events': 'yes',
     'show-shiurim': 'yes',
     'panel-line': 'yes',       # the line beside the clock, via xfce4-genmon-plugin
+    # Which kind of tray item to own: empty lets ShulGo decide, "own" or "library" overrule it.
+    # There is no setting for this in the window on purpose — it exists so that a desktop nobody
+    # here has can be tried both ways without rebuilding a package. sni.plan explains the choice.
+    'tray-item': '',
 }
 
 

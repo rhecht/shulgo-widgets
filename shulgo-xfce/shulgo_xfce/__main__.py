@@ -34,9 +34,29 @@ def check():
 
         return 1
 
-    from .tray import _load_indicator
+    from .tray import _load_indicator, choose_tray
     _module, flavour = _load_indicator()
-    lines.append('tray: %s' % (flavour or 'no AppIndicator — falling back to Gtk.StatusIcon'))
+    lines.append('tray library: %s' % (flavour or 'no AppIndicator installed'))
+
+    # Which kind of item will be owned, and why. The fifth silent failure, and the one that cost
+    # Cutefish: the icon appeared, the menu was complete, and a left-click did nothing because the
+    # item libayatana exports has no ItemIsMenu property. Nothing on screen said which kind of item
+    # was in use, so there was nothing to look at. Now there is.
+    from . import config as _config, sni
+    kind, why = choose_tray(flavour is not None, _config.load_settings())
+    lines.append('tray item: %s — %s' % (
+        {sni.OWN: 'ShulGo’s own (ItemIsMenu, menu over DBusMenu)',
+         sni.LIBRARY: 'the appindicator library’s',
+         sni.STATUS_ICON: 'Gtk.StatusIcon (deprecated, X11 only)'}.get(kind, kind), why))
+
+    # Asked here and not when choosing, where it would be a race: at login this program is often
+    # up before the compositor's watcher. It is still worth printing, because an item nothing has
+    # registered with is an icon that silently never appears.
+    if kind == sni.OWN:
+        from . import tray_sni
+        lines.append('tray listening: %s' % (
+            'yes' if tray_sni.watcher_present()
+            else 'not yet — the item will register itself when one starts'))
 
     display = os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')
     lines.append('display: %s' % (display or 'NONE — there is no desktop to put an icon on'))
