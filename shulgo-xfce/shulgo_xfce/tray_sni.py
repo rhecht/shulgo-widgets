@@ -26,11 +26,12 @@ from gi.repository import GLib, Gio  # noqa: E402
 
 from . import sni  # noqa: E402
 
-# The GIR name of dbusmenu_gtk_parse_menu_structure cannot be worked out from here with any
-# confidence — it depends on how the typelib strips the prefix. Rather than guess once and fail
-# silently, every plausible spelling is tried and the error names all of them, so one run in the
-# Cutefish container settles it for good.
-_PARSE_NAMES = ('parse_menu_structure', 'gtk_parse_menu_structure', 'menu_structure_parse')
+# Measured, not guessed. dir(DbusmenuGtk3) in a real Cutefish session on Debian 13 (PyGObject
+# 3.50, libdbusmenu 18.10) offers gtk_parse_get_cached_item and gtk_parse_menu_structure, so the
+# typelib keeps the gtk_ and drops the dbusmenu_. There was a list of three candidate spellings
+# here while that was unknown; one run settled it, and a list of guesses that has been answered is
+# worse than the answer.
+_PARSE_NAME = 'gtk_parse_menu_structure'
 
 
 def libraries():
@@ -206,9 +207,8 @@ def _parse(dbusmenu_gtk, menu):
     relabelling in tray.py had to happen twice and stay in step, and the countdown relabels a row
     every sixty seconds.
     """
-    for name in _PARSE_NAMES:
-        parse = getattr(dbusmenu_gtk, name, None)
-        if parse is not None:
-            return parse(menu)
+    parse = getattr(dbusmenu_gtk, _PARSE_NAME, None)
+    if parse is None:
+        raise RuntimeError('DbusmenuGtk3 has no %s' % _PARSE_NAME)
 
-    raise RuntimeError('libdbusmenu-gtk3 has none of %s' % ', '.join(_PARSE_NAMES))
+    return parse(menu)

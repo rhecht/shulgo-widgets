@@ -34,8 +34,8 @@ from .pick import headline as pick_headline, rows as rows_in, still_ahead  # noq
 from . import link  # noqa: E402
 from .fmt import (  # noqa: E402
     countdown, countdown_short, escape_markup, event_date, maps_uri, miles, minutes_until,
-    minyan_destination, minyan_note, minyan_subtitle, minyan_time, offline_notice, shiur_subtitle,
-    tefillah_label, today_iso, updated_ago, zman_time, zmanim_list,
+    minyan_destination, minyan_note, minyan_one_line, minyan_subtitle, minyan_time, offline_notice,
+    shiur_subtitle, tefillah_label, today_iso, updated_ago, zman_time, zmanim_list,
 )
 
 ICON_NAME = icons.ICON_NAME
@@ -502,6 +502,16 @@ class ShulGoTray:
             # countdown moves down beside the shul and the distance: useful, but not the headline.
             # The first version showed only a countdown and no clock time anywhere, which is how
             # "I don't see any times" came back from somebody actually using it.
+            if self.own_item is not None:
+                # One line, because Cutefish's DBusMenu renderer draws the first line of a label
+                # and throws the rest away — which left every row reading "5:00 PM  Maariv" and
+                # nothing else. GTK draws the two-line version below itself, so only this path
+                # needs it. fmt.minyan_one_line decides what comes off when it will not fit.
+                self._set(item, escape_markup(minyan_one_line(row, minutes, mode)))
+                item.destination = minyan_destination(row)
+                item.show()
+                continue
+
             clock = minyan_time(row)
             line = '<b>%s</b>' % escape_markup(
                 '%s  %s' % (clock, tefillah_label(row.get('tefillah'))) if clock
@@ -641,16 +651,16 @@ class ShulGoTray:
         item.shulgo_label.set_markup(markup)
 
     def _panel(self, text):
-        """The bit of text beside the icon, where the panel shows one."""
+        """The bit of text beside the icon, where the panel shows one.
+
+        Nothing here for ShulGo's own item: the specification has no label beside the icon, that
+        being an Ayatana extension, and Cutefish's tray reads none. Its hover text is set in _bar
+        instead, from the whole line rather than from this bare countdown.
+        """
         if self.indicator is not None and hasattr(self.indicator, 'set_label'):
             self.indicator.set_label(text or '', '1h00')
         if self.status_icon is not None:
             self.status_icon.set_tooltip_text('ShulGo — %s' % text if text else 'ShulGo')
-        if self.own_item is not None:
-            # The StatusNotifierItem specification has no label beside the icon — that is an
-            # Ayatana extension — so on this path the headline goes in the tooltip instead. Which
-            # libayatana cannot do at all, since it ignores ToolTip.
-            self.own_item.set_tooltip_body(text or '')
 
     def _bar(self, headline, rows=(), notice=None, no_place=False):
         """Keep the top-bar file current, for xfce4-genmon-plugin to cat.
@@ -660,22 +670,39 @@ class ShulGoTray:
         file goes away rather than sitting there growing stale: a line that is quietly frozen is
         worse than no line, because somebody will read it on their way out of the door.
         """
+        place = config.saved_place(self.settings)
+        said = dict(
+            headline=headline,
+            place=None if no_place else (place[2] if place else None),
+            has_key=self.api.has_key,
+            stale=bool(notice),
+            window_minutes=config.as_int(self.settings, 'window-minutes'),
+            pending=self._pending is not None,
+        )
+
+        # The hover text on ShulGo's own item is the line the top bar would show, and it is set
+        # whether or not the top-bar line is switched on: that setting is about xfce4-genmon-plugin,
+        # which does not exist on the desktops this path serves. On Cutefish this is the only place
+        # the next minyan appears without opening the menu — its tray has no room for text at all,
+        # which was measured rather than assumed, including an attempt at drawing the time into the
+        # icon (squashed into a square, unreadable).
+        #
+        # bar.summary rather than a countdown: it is already the thing that knows to say "ShulGo:
+        # not linked", "ShulGo: choose a place" and "No minyan in the next 2 h", and the hover text
+        # would otherwise have been blank in exactly those three cases.
+        if self.own_item is not None:
+            self.own_item.set_tooltip_body(bar.summary(**said))
+
         if self.settings.get('panel-line') != 'yes':
             config.clear_bar()
 
             return
 
-        place = config.saved_place(self.settings)
         config.save_bar(bar.document(
-            headline=headline,
             rows=rows,
             zmanim=zmanim_list(self.state['zmanim']),
-            place=None if no_place else (place[2] if place else None),
-            has_key=self.api.has_key,
-            stale=bool(notice),
             stale_since=notice['short'] if notice else None,
-            window_minutes=config.as_int(self.settings, 'window-minutes'),
-            pending=self._pending is not None,
+            **said
         ))
 
     # ---- what the menu does ----------------------------------------------------------------

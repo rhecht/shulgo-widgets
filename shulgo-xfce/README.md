@@ -43,7 +43,7 @@ icon's "not found anywhere" branch has not been exercised either, only the other
 
 **The logic is tested. Most of the window still is not.**
 
-190 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
+199 tests pass, covering the wording, the API client, the offline failsafe, the key and settings
 files, where the tray icon comes from, what each device-linking answer means, how big the settings
 window may open and where on the screen it opens, which kind of tray item to own, and the rules that decide what you see. Of those, 166 individual wording
 cases are checked *against the JavaScript* — see below.
@@ -130,6 +130,21 @@ it is a fair stand-in, since on Wayland there is no XEmbed tray to fall back to 
 `python3 -m shulgo_xfce --check` now says which kind of item is in use and why, because the whole
 difficulty of this fault was that nothing on screen distinguished the two. `tray-item` in the
 config file forces either kind, for trying a desktop both ways without rebuilding a package.
+
+Two things followed from seeing it run on the real desktop, and neither was predictable from here.
+Cutefish's DBusMenu renderer draws the first line of a label and throws the rest away, so every row
+read "5:00 PM  Maariv" and nothing else — the reply to which was, fairly, "Maariv where?". On that
+path each row is now built as one line by `fmt.minyan_one_line`, which never drops the shul and
+sheds the nusach, the drive time, the distance and the note, in that order, before it will shorten
+anything that matters. And the hover text now carries the line the top bar would show, from the same
+`bar.summary` that knows to say "ShulGo: not linked" rather than nothing at all; it is set whether or
+not the top-bar line is switched on, because that setting is about a genmon plugin which does not
+exist on these desktops.
+
+There is no text beside the icon on Cutefish and there will not be: its tray reads no label, there
+is no applet API, and drawing the time into a wide `IconPixmap` was tried and squashed into a square.
+The hover text and the first line of the menu are the whole of it, which is what was asked for once
+that was known.
 
 None of the D-Bus code has run anywhere: this machine has no D-Bus session, no GTK and no tray, so
 it is written from the specification rather than from a session that worked. That is why creating

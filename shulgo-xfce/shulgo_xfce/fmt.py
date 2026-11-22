@@ -341,10 +341,9 @@ def minyan_subtitle(item, mode='drive'):
     """The one line under a minyan's name: shul, distance, how long to get there, nusach."""
     item = item or {}
     bits = []
-    if item.get('kind') == 'live':
-        bits.append('Forming now' if (item.get('live') or {}).get('notes') else 'Forming nearby')
-    elif (item.get('shul') or {}).get('display_name'):
-        bits.append(item['shul']['display_name'])
+    where = minyan_where(item)
+    if where:
+        bits.append(where)
 
     d = miles(item.get('distance_miles'))
     if d:
@@ -356,6 +355,19 @@ def minyan_subtitle(item, mode='drive'):
         bits.append(item['nusach'])
 
     return ' · '.join(bits)
+
+
+def minyan_where(item):
+    """Where a minyan is, in as many words as there are: a shul's name, or that it is forming.
+
+    Shared by minyan_subtitle and minyan_one_line so that the two cannot drift into calling the
+    same place by two different names.
+    """
+    item = item or {}
+    if item.get('kind') == 'live':
+        return 'Forming now' if (item.get('live') or {}).get('notes') else 'Forming nearby'
+
+    return ((item.get('shul') or {}).get('display_name')) or ''
 
 
 def minyan_note(item):
@@ -572,3 +584,58 @@ def updated_ago(unix, now=None):
     h = mins // 60
 
     return 'Updated %d hour%s ago' % (h, '' if h == 1 else 's')
+
+
+# How long a single-line menu row may be before the least useful parts of it start coming off.
+# A judgement, not a measurement: nobody here knows how wide Cutefish draws its menu. 72 keeps the
+# time, the tefillah, the shul and the countdown together with room for a distance, and loses the
+# drive time on the longest shul names, which is the right thing to lose first.
+ONE_LINE_MAX = 72
+
+
+def minyan_one_line(item, minutes=None, mode='drive', limit=ONE_LINE_MAX):
+    """A whole minyan on one line, for a menu somebody else draws.
+
+    The tray menu's rows are normally two or three lines: the time and the tefillah in bold, then
+    the shul and the distance under it. Cutefish's DBusMenu renderer draws only the first line of a
+    label and throws the rest away, so on that desktop every row read "5:00 PM  Maariv" and nothing
+    else — which got the fair reply "Maariv where?".
+
+    So where the menu is drawn by the host rather than by GTK, the row is built as one line instead.
+    The shul is never dropped, however long the line gets: a row without it is the row that prompted
+    this. What comes off, in order, is the nusach, the drive time, the distance, the note and last
+    of all the countdown.
+    """
+    item = item or {}
+    clock = minyan_time(item)
+    name = tefillah_label(item.get('tefillah'))
+
+    head = ('%s  %s' % (clock, name)) if clock else name
+    core = [x for x in (_unwrapped(head), _unwrapped(minyan_where(item))) if x]
+    extras = [_unwrapped(x) for x in
+              (countdown(minutes), minyan_note(item), miles(item.get('distance_miles')),
+               travel(item, mode), item.get('nusach') or '') if x]
+
+    while extras:
+        line = ' · '.join(core + extras)
+        if len(line) <= limit:
+            return line
+        extras.pop()
+
+    return ' · '.join(core)
+
+
+def _unwrapped(text):
+    """One line, whatever came in.
+
+    A shul's notes are free text from the API and may well contain a line break; so may a venue
+    label somebody typed. A single newline anywhere in here would hand Cutefish's renderer the
+    same row it was already truncating, which would be a comic way to lose the fix. The double
+    space between the time and the tefillah is left alone, because it is deliberate.
+    """
+    text = text or ''
+
+    for character in ('\r\n', '\n', '\r', '\t'):
+        text = text.replace(character, ' ')
+
+    return text.strip()

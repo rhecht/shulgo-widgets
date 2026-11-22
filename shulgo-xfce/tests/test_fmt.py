@@ -229,6 +229,87 @@ class TheClockDependentOnes(unittest.TestCase):
         self.assertEqual(notice['title'], 'ShulGo isn’t answering')
 
 
+class OneLineRows(unittest.TestCase):
+    """For a menu the desktop draws itself, where a second line is thrown away.
+
+    Cutefish's DBusMenu renderer shows the first line of a label and drops the rest, so every row
+    read "5:00 PM  Maariv" and nothing else. The reply to that was "Maariv where?", and the shul
+    being present is therefore the assertion that matters most here.
+    """
+
+    ROW = {
+        'display_time': '5:00 PM',
+        'tefillah': 'maariv',
+        'shul': {'display_name': 'Torath Emeth (Viewmount)'},
+        'distance_miles': 0.9,
+    }
+
+    def test_the_whole_row_is_on_one_line(self):
+        line = fmt.minyan_one_line(self.ROW, 6)
+
+        self.assertNotIn('\n', line)
+        self.assertIn('5:00 PM', line)
+        self.assertIn('Maariv', line)
+        self.assertIn('Torath Emeth (Viewmount)', line)
+        self.assertIn('in 6 min', line)
+
+    def test_free_text_cannot_smuggle_in_a_line_break(self):
+        """Notes and venue labels come from the API and from people typing.
+
+        One newline in there would hand the renderer the same truncated row back, which would be
+        a comic way to lose the fix.
+        """
+        for note in ('Downstairs\nuse the side door', 'Side door\r\nring the bell',
+                     'Tab\there', '\nleading', 'trailing\n'):
+            line = fmt.minyan_one_line(dict(self.ROW, notes=note), 6)
+
+            self.assertNotIn('\n', line)
+            self.assertNotIn('\r', line)
+            self.assertNotIn('\t', line)
+
+    def test_the_shul_is_never_dropped_however_long_the_line_gets(self):
+        """Everything else is negotiable. This is the thing the row exists to say."""
+        name = 'Congregation Shaarei Shomayim of Toronto (Main Sanctuary, Downstairs)'
+        line = fmt.minyan_one_line(
+            dict(self.ROW, shul={'display_name': name}, nusach='Ashkenaz',
+                 notes='Use the side door'), 6)
+
+        self.assertIn(name, line)
+
+    def test_what_comes_off_first_is_the_least_useful(self):
+        """Nusach, then the drive time, then the distance — and the countdown last of all."""
+        crowded = dict(self.ROW, nusach='Ashkenaz', shul={'display_name': 'Beis Medrash Zichron Avraham'})
+        line = fmt.minyan_one_line(crowded, 6)
+
+        self.assertNotIn('Ashkenaz', line)
+        self.assertIn('in 6 min', line)
+
+    def test_a_cancelled_minyan_still_says_so(self):
+        """A row that reads like any other when it has been cancelled is worse than a long row."""
+        self.assertIn('Cancelled', fmt.minyan_one_line(dict(self.ROW, status='cancelled'), 6))
+
+    def test_a_forming_minyan_says_where_it_is_forming(self):
+        for live, expected in (({'notes': 'at the park'}, 'Forming now'), ({}, 'Forming nearby')):
+            line = fmt.minyan_one_line({'kind': 'live', 'live': live, 'tefillah': 'mincha'}, 3)
+
+            self.assertIn(expected, line)
+
+    def test_an_empty_row_does_not_raise(self):
+        """Rows are drawn from whatever the API sent, including, once, nothing at all."""
+        self.assertTrue(fmt.minyan_one_line({}))
+        self.assertTrue(fmt.minyan_one_line(None))
+
+    def test_it_calls_a_place_what_the_two_line_version_calls_it(self):
+        """Two renderings of one row must not name the same shul differently."""
+        for row in (self.ROW,
+                    {'kind': 'live', 'live': {}, 'tefillah': 'mincha'},
+                    {'kind': 'live', 'live': {'notes': 'x'}, 'tefillah': 'mincha'}):
+            where = fmt.minyan_where(row)
+            if where:
+                self.assertIn(where, fmt.minyan_subtitle(row))
+                self.assertIn(where, fmt.minyan_one_line(row, 5))
+
+
 class TheArithmeticJavaScriptDoes(unittest.TestCase):
     """The two rounding rules, checked directly as well as through miles().
 
