@@ -425,8 +425,20 @@ class Tray(object):
         self._pending = link.Linking.resume(saved)
         self._poll_pending()
 
-    def _poll_pending(self):
+    def forget_pending(self):
+        u"""Drop the linking in progress, on purpose. Its timer and any answer in flight are
+        ignored from here on, because they name a device code that is no longer this one."""
+        config.clear_pending()
+        self._pending = None
+        self._draw()
+
+    def _poll_pending(self, device_code=None):
+        u"""Ask once about the current code. Every timer carries the code it was set for, and one
+        set for a code that has since been replaced does nothing: otherwise each new code started
+        another chain of polls beside the old one, and the server answers slow_down to both."""
         if self._pending is None:
+            return False
+        if device_code is not None and device_code != self._pending.device_code:
             return False
 
         threading.Thread(target=self._do_poll, args=(self._pending.device_code,)).start()
@@ -434,10 +446,14 @@ class Tray(object):
         return False
 
     def _do_poll(self, device_code):
-        gobject.idle_add(self._pending_answer, self.api.device_poll(device_code))
+        gobject.idle_add(self._pending_answer, self.api.device_poll(device_code), device_code)
 
-    def _pending_answer(self, answer):
+    def _pending_answer(self, answer, device_code=None):
         if self._pending is None:
+            return False
+        # An answer about a code that has been replaced is about nothing. Absorbed into the new one,
+        # an old code's expired_token would throw away the code somebody is approving right now.
+        if device_code is not None and device_code != self._pending.device_code:
             return False
 
         pending = self._pending
@@ -464,7 +480,8 @@ class Tray(object):
         else:
             config.save_pending(self._pending.device_code, self._pending.user_code,
                                 self._pending.expires_at, self._pending.interval)
-            gobject.timeout_add(max(1, self._pending.interval) * 1000, self._poll_pending)
+            gobject.timeout_add(max(1, self._pending.interval) * 1000, self._poll_pending,
+                                self._pending.device_code)
         self._draw()
         if self._link_window is not None:
             self._link_window.show_state(state, pending)

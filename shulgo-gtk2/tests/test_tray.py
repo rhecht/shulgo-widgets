@@ -183,6 +183,8 @@ class TheWindowsAndTheMenu(unittest.TestCase):
         window = LinkWindow(self.tray)
         window._started(self.tray.api.device_start(u'test'))
         self.assertTrue(u'ABCD-EFGH' in window.code.get_text(), window.code.get_text())
+        # A code it has only just asked for is not one to offer replacing.
+        self.assertEqual(window.again.get_property('visible'), False)
         window.window.destroy()
 
     def test_the_link_window_says_offline_before_it_says_ask_an_administrator(self):
@@ -331,6 +333,78 @@ class TheLinkingFinishes(unittest.TestCase):
 
         window.window.destroy()
         self.assertTrue(self.tray._link_window is None)
+
+    def _probe_window(self):
+        u"""A LinkWindow that records asking ShulGo for a code instead of asking."""
+        from shulgo_gtk2.windows import LinkWindow
+        started = []
+
+        class Probe(LinkWindow):
+            def _start(self):
+                started.append(True)
+
+        window = Probe(self.tray)
+        window.show()
+
+        return window, started
+
+    def test_reopening_the_link_window_shows_the_waiting_code_rather_than_minting_one(self):
+        u"""It minted a new code every time, overwriting the one an administrator was about to
+        approve — so the approval went to a code nothing was asking about any more."""
+        window, started = self._probe_window()
+
+        self.assertEqual(started, [], 'opening the window asked ShulGo for a new code')
+        self.assertTrue(u'ABCD-EFGH' in window.code.get_text(), window.code.get_text())
+        self.assertEqual(self.tray._pending.device_code, u'dev-123')
+        self.assertEqual(config.load_pending()[u'device_code'], u'dev-123')
+        self.assertEqual(window.again.get_property('visible'), True)
+        window.window.destroy()
+
+    def test_get_a_new_code_replaces_it_only_when_asked(self):
+        window, started = self._probe_window()
+        window._on_again()
+
+        self.assertEqual(started, [True])
+        self.assertTrue(self.tray._pending is None)
+        self.assertTrue(config.load_pending() is None)
+        self.assertEqual(window.again.get_property('visible'), False)
+        window.window.destroy()
+
+    def test_a_turned_down_link_offers_a_new_code_in_the_window(self):
+        window, started = self._probe_window()
+        self.tray._pending_answer({u'ok': False, u'code': u'access_denied'})
+        self.assertEqual(window.again.get_property('visible'), True)
+        window.window.destroy()
+
+    def test_an_answer_about_a_replaced_code_is_ignored(self):
+        u"""An old code's expired_token, absorbed into the new code, would end the new one."""
+        self.tray._pending_answer({u'ok': False, u'code': u'expired_token'}, u'old-code')
+
+        self.assertTrue(self.tray._pending is not None)
+        self.assertEqual(self.tray._pending.device_code, u'dev-123')
+        self.assertTrue(os.path.exists(config.pending_path()))
+        self.assertEqual(self.bubbles, [])
+
+    def test_an_answer_about_the_current_code_still_counts(self):
+        self.tray._pending_answer({u'ok': True, u'data': {u'api_key': self.KEY}}, u'dev-123')
+        self.assertEqual(config.load_api_key(), self.KEY)
+
+    def test_a_timer_set_for_a_replaced_code_polls_nothing(self):
+        u"""Each new code used to start a second chain of polls beside the old one."""
+        import time
+        polled = []
+        self.tray._do_poll = lambda code: polled.append(code)
+
+        self.tray._poll_pending(u'old-code')
+        time.sleep(0.3)
+        self.assertEqual(polled, [])
+
+        self.tray._poll_pending(u'dev-123')
+        for _ in range(20):
+            if polled:
+                break
+            time.sleep(0.1)
+        self.assertEqual(polled, [u'dev-123'])
 
     def test_a_linking_left_over_from_before_a_reboot_keeps_its_own_deadline(self):
         u"""The file holds a deadline; it was read as a fresh ten-minute code."""

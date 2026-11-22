@@ -186,10 +186,18 @@ class LinkWindow(_Window):
         self.code.set_selectable(True)
         self.code.set_alignment(0.0, 0.5)
 
+        # Only offered when there is a code worth replacing on purpose: one this window did not
+        # just ask for, or one that has ended. Hidden by hand, so show_all() leaves it alone.
+        self.again = gtk.Button(u'Get a new code')
+        self.again.connect('clicked', self._on_again)
+        self.again.set_no_show_all(True)
+
         close = gtk.Button(stock=gtk.STOCK_CLOSE)
         close.connect('clicked', lambda *a: self.window.destroy())
         buttons = gtk.HButtonBox()
         buttons.set_layout(gtk.BUTTONBOX_END)
+        buttons.set_spacing(6)
+        buttons.add(self.again)
         buttons.add(close)
 
         box = gtk.VBox(False, 10)
@@ -201,6 +209,23 @@ class LinkWindow(_Window):
         # The tray does the asking; this is how its answers reach the window. Without it the window
         # said "Waiting for you to approve it" for ever, even after the link had gone through.
         tray._link_window = self
+
+        # A linking already under way is SHOWN, never replaced. Opening this window used to mint a
+        # new code every time and overwrite the pending one — which may be the one an administrator
+        # is about to approve, so their approval went to a code nothing was asking about any more.
+        # Replacing it is still possible, but only by pressing "Get a new code".
+        pending = tray._pending
+        if pending is not None and pending.usable:
+            self._show_pending()
+            self.again.show()
+        else:
+            self._start()
+
+    def _on_again(self, *ignored):
+        u"""Throw the current code away on purpose and ask for another."""
+        self.tray.forget_pending()
+        self.again.hide()
+        self._say(u'<b>Starting…</b>', u'')
         self._start()
 
     def _on_destroy(self, *ignored):
@@ -237,6 +262,7 @@ class LinkWindow(_Window):
         config.save_pending(pending.device_code, pending.user_code,
                             pending.expires_at, pending.interval)
         self._show_pending()
+        self.again.hide()
         self.tray._poll_pending()
 
         return False
@@ -258,10 +284,13 @@ class LinkWindow(_Window):
         words = escape_markup(link.words(state, pending))
         if state == link.DONE:
             self._say(u'<b>Linked</b>', words)
+            self.again.hide()
         elif state == link.DENIED:
             self._say(u'<b>Turned down</b>', words)
+            self.again.show()
         elif state == link.EXPIRED:
             self._say(u'<b>Code ran out</b>', words)
+            self.again.show()
         elif state == link.ERROR:
             # Still being asked — the tray polls on after an error — so the code stays up.
             self._say(
