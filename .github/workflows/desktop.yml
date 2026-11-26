@@ -109,14 +109,33 @@ jobs:
         with:
           path: installers
           merge-multiple: true
+      # "ShulGo desktop desktop-v1.0.0" is what `ShulGo desktop ${{ github.ref_name }}` produced,
+      # and the release title is a public thing. GitHub expressions cannot strip a prefix, so the
+      # shell does it.
+      - name: The version, without the tag's prefix
+        id: version
+        run: echo "number=${GITHUB_REF_NAME#desktop-v}" >> "$GITHUB_OUTPUT"
       - uses: softprops/action-gh-release@v2
         with:
           files: installers/*
           draft: true            # so nothing reaches anyone before you have looked at it
-          name: ShulGo desktop ${{ github.ref_name }}
+          name: ShulGo desktop ${{ steps.version.outputs.number }}
+          # Which file to take is not obvious from the names alone: electron-builder gives the NSIS
+          # installer and the portable build the same extension and nearly the same name, and the
+          # two Mac architectures differ by one word. Saying so here costs four lines and saves
+          # somebody downloading 91 MB of the wrong thing.
           body: |
             The ShulGo desktop widget: the next minyan near you in the menu bar or tray, with events,
             mikvaos and today's zmanim.
+
+            **Which file?**
+
+            - **Mac** — `ShulGo-1.0.0-arm64.dmg` for Apple Silicon (M1 and later), `ShulGo-1.0.0.dmg`
+              for an Intel Mac. The `.zip` files are the same app without the disk image.
+            - **Windows** — `ShulGo.Setup.1.0.0.exe` installs it. `ShulGo.1.0.0.exe` is the portable
+              build: it runs where you put it and installs nothing.
+            - **Linux** — the `.deb` for Debian and Ubuntu, the `.AppImage` anywhere else. `arm64`
+              files are for Apple Silicon under Asahi and for arm64 machines generally.
 
             These builds are **not signed yet**. macOS will say the app is from an unidentified
             developer (right-click › Open the first time); Windows SmartScreen will warn before the
