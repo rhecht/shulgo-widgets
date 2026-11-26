@@ -14,11 +14,29 @@ const SLIDERS = [
 let state = null;
 let searchTimer = null;
 
+// Where "This computer" sits once a computer is linked — remembered before anything moves it, so the
+// order can go back the moment somebody links.
+const ACCOUNT_HOME = $('accountSection').nextElementSibling;
+
 function apply(changes) {
     window.shulgo.set(changes);
 }
 
 // ---- place ----------------------------------------------------------------------------------
+
+// Why the place box is empty, in the words someone typing a city would want. `no_key` is the one
+// that matters: a ShulGo that has not been linked yet cannot look places up, and until now it said
+// so by doing nothing at all.
+const WHY_NO_PLACES = {
+    no_key: 'Link this computer first — ShulGo looks places up for you, and that needs the link.',
+    offline: 'No connection just now, so places cannot be looked up.',
+    error: 'ShulGo could not be reached just now. Try again in a moment.',
+};
+
+/** The one line under the place box that says why there is nothing in it. */
+function said(words) {
+    $('placeWhy').textContent = words;
+}
 
 async function search() {
     const text = $('place').value.trim();
@@ -26,16 +44,19 @@ async function search() {
     box.replaceChildren();
     if (text.length < 2) {
         box.hidden = true;
+        said('');
 
         return;
     }
 
-    const matches = await window.shulgo.searchPlaces(text);
+    const { matches, code } = await window.shulgo.searchPlaces(text);
     if (!matches.length) {
         box.hidden = true;
+        said(code ? (WHY_NO_PLACES[code] || WHY_NO_PLACES.error) : `Nothing found for “${text}”.`);
 
         return;
     }
+    said('');
 
     for (const match of matches.slice(0, 6)) {
         const button = document.createElement('button');
@@ -99,6 +120,10 @@ function render() {
 
     // The place name comes from ShulGo, so it goes in as text with the bold part built around it.
     const current = $('current');
+    // Said before anybody types, as well as when they do: an unlinked ShulGo cannot look places up,
+    // and the place box is the first thing in this window.
+    said(s.hasKey ? '' : WHY_NO_PLACES.no_key);
+
     current.replaceChildren();
     if (state.place?.label) {
         const name = document.createElement('b');
@@ -113,6 +138,15 @@ function render() {
     // Somebody with a key already pasted in should not have to hunt for Remove behind a disclosure
     // meant to keep the box out of everyone else's way.
     $('keyBox').open = s.hasKey;
+
+    // An unlinked ShulGo opened on "Where to look", which is the one section that cannot work yet,
+    // with the link three sections below it. Somebody typed their city in, got silence, and had to
+    // ask what to do. Until it is linked, the link goes first.
+    const account = $('accountSection');
+    if (!s.hasKey)
+        $('placeSection').before(account);
+    else if (ACCOUNT_HOME)
+        ACCOUNT_HOME.before(account);
     if (!$('keyStatus').textContent)
         $('keyStatus').textContent = s.hasKey ? 'This computer is linked.' : 'This computer isn’t linked yet.';
 }

@@ -279,3 +279,17 @@ footer button:hover {
 #keyBox summary:hover {
   color: var(--text);
 }
+
+/* The line under the place box that says why it found nothing — including, before a computer is
+   linked, that it cannot look anything up yet. It used to say nothing at all. */
+
+.why {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gold-light);
+}
+
+.why:empty {
+  display: none;
+}

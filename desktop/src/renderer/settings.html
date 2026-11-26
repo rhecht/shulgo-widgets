@@ -14,7 +14,7 @@
   <div class="scroll">
     <h1>ShulGo</h1>
 
-    <section>
+    <section id="placeSection">
       <h2>Where to look</h2>
       <p class="hint">A city, neighborhood or zip — “Lakewood, NJ”, “Boro Park”, “11230”, “Antwerp”.
         ShulGo looks it up and remembers it.</p>
@@ -22,6 +22,7 @@
         <input type="search" id="place" placeholder="Type a place" autocomplete="off" spellcheck="false">
       </div>
       <div class="matches" id="matches" hidden></div>
+      <div class="why" id="placeWhy"></div>
       <div class="current" id="current"></div>
     </section>
 
@@ -100,7 +101,7 @@
       </label>
     </section>
 
-    <section>
+    <section id="accountSection">
       <h2>This computer</h2>
       <p class="hint">Press <b>Link this computer</b> and a short code appears. Approve it on your
         phone — or anywhere you are signed in to ShulGo — and times show up here within seconds.

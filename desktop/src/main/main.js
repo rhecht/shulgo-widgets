@@ -253,59 +253,9 @@ function showPanel() {
     panel.show();
     panel.focus();
     panelUp = true;
-    warmUp();
     sendState();
     if (store.stale)
         store.refresh();
-}
-
-// How long to leave the first window up before replacing it. Long enough for the compositor to have
-// seen it — a hide and a show in the same tick may never reach it as two events — and short enough
-// that nobody waits. Measured on Cutefish: click to first frame went from three clicks to 98 ms.
-const WARM_UP_MS = 60;
-let warmedUp = false;
-
-/** Throw the first window away and take the second, once, on Linux.
- *
- * The fault, traced on a real Cutefish screen with WAYLAND_DEBUG=client: the first time the panel is
- * shown, Electron creates the xdg_toplevel, acks its configure, commits the surface — and never
- * attaches a wl_buffer. Nothing is painted. The second click destroys that toplevel and the third
- * makes another, which attaches three buffers at once and works. The renderer has content the whole
- * time; it is that first toplevel which never gets a frame. So a left-click on a freshly started
- * ShulGo appeared to do nothing, twice, which is what "the widget doesn't work" looks like.
- *
- * This does to the first window what the user was otherwise forced to do by clicking twice more. It
- * runs once, and never on macOS or Windows, where the first window paints like any other and a hide
- * and show would be a visible flicker for nothing.
- *
- * Four candidates were built and measured on that screen before this one was kept. `invalidate()`
- * failed exactly as doing nothing did — there is nothing to repaint when the compositor never
- * received a surface with a buffer. Creating the window already shown and hiding it once painted
- * worked, but at login it took focus and held a painted frame for 21 ms, and ShulGo starts at login.
- * Destroying the window on every hide worked too, and made every reopen 4–5× slower for a fault that
- * happens once. This pays once, at the first show, and is a no-op afterwards.
- *
- * The weak point is the timer, and it is worth naming: on a machine slow enough that 60 ms is not
- * enough, the swap does nothing useful and the user is back to clicking twice — today's behaviour,
- * not something worse. That is the whole downside, which is why a timer was acceptable here.
- */
-function warmUp() {
-    if (warmedUp || process.platform !== 'linux')
-        return;
-
-    warmedUp = true;
-    setTimeout(() => {
-        if (!panel || !panelUp)
-            return;
-
-        panel.hide();
-        panel.show();
-        panel.focus();
-        // Re-asserted because the hide above can raise 'blur', whose handler clears it. The window
-        // operations are deliberately exactly the ones that were measured; this only keeps our idea
-        // of what is on screen in step with what is.
-        panelUp = true;
-    }, WARM_UP_MS);
 }
 
 /** Every way the panel goes away comes through here, so the flag above cannot drift. */
@@ -452,10 +402,13 @@ function registerIpc() {
         return viewState();
     });
 
+    // The reason travels with the result. It used to return [] for every kind of failure, so an
+    // unlinked ShulGo answered "type a place" with nothing at all — no list, no message, no reason to
+    // think the program was working. Somebody typed their own city into it and had to ask what to do.
     ipcMain.handle('shulgo:searchPlaces', async (_event, text) => {
         const answer = await api.places(String(text ?? ''));
 
-        return answer.ok ? answer.data : [];
+        return answer.ok ? { matches: answer.data, code: null } : { matches: [], code: answer.code || 'error' };
     });
 
     ipcMain.handle('shulgo:setPlace', (_event, match) => {
