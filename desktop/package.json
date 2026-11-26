@@ -1,6 +1,6 @@
 {
   "name": "shulgo-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "ShulGo in the macOS menu bar (and the Windows tray): the next minyan near you, with events, mikvaos and zmanim.",
   "author": "ShulGo <info@shulgo.com>",
@@ -27,6 +27,7 @@
   "build": {
     "appId": "com.shulgo.desktop",
     "productName": "ShulGo",
+    "afterPack": "scripts/adhoc-sign.cjs",
     "files": [
       "src/**/*",
       "assets/**/*",
