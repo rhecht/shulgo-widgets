@@ -104,11 +104,30 @@ function updateTray() {
         tray.setTitle(shown ? ` ${shown}` : '');
     }
 
-    const place = store.state.place?.label;
-    const line = next
-        ? `${F.tefillahLabel(next.tefillah)} ${next.display_time} — ${F.minyanSubtitle(next, settings.get('travelMode'))}`
-        : `ShulGo${place ? ` — ${place}` : ''}`;
+    const line = tooltipLine();
     tray.setToolTip(notice ? `${line}\n${notice.title}. ${notice.body}` : line);
+}
+
+/** What the tray says on hover.
+
+   Before 1.0.2 an unlinked ShulGo hovered as the single word “ShulGo”, which says nothing about why
+   there are no times in it — the one state where the tooltip is the only explanation on screen, since
+   the panel has to be opened to be read. The Xfce widget had this right already (“No key yet — choose
+   “Link this computer”.”), so these are its words. */
+function tooltipLine() {
+    const next = store.headline;
+    if (next)
+        return `${F.tefillahLabel(next.tefillah)} ${next.display_time} — ${F.minyanSubtitle(next, settings.get('travelMode'))}`;
+
+    const state = store.state;
+    if (state.needsKey)
+        return 'ShulGo — not linked yet. Click the icon, then “Link this computer”.';
+    if (state.needsPlace)
+        return 'ShulGo — no place chosen yet. Click the icon to pick one.';
+
+    const place = state.place?.label;
+
+    return `ShulGo${place ? ` — ${place}` : ''}`;
 }
 
 function buildTray() {

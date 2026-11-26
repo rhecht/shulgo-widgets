@@ -319,11 +319,16 @@ function render() {
         return;
     }
 
+    // The words here are the widgets' words. This used to lead with "Add your ShulGo API key — ask your
+    // ShulGo administrator for one", which named the fallback as though it were the only way in, and
+    // sent people looking for an administrator who, for anyone using shulgo.com, does not exist. The
+    // app has had device-code linking all along, and Settings puts it first; only this screen did not.
     if (state.needsKey) {
         el.content.append(notice({
-            title: 'Add your ShulGo API key',
-            body: 'Ask your ShulGo administrator for one. Settings has the box to paste it into.',
-            actionLabel: 'Open Settings',
+            title: 'This computer isn’t linked yet',
+            body: 'Linking shows a short code to approve on your phone — nothing long to copy. '
+                + 'Settings also takes a key, if you were given one.',
+            actionLabel: 'Link this computer…',
             onAction: () => window.shulgo.openSettings(),
         }));
 
