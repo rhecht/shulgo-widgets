@@ -116,17 +116,38 @@ function buildTray() {
     tray.setIgnoreDoubleClickEvents(true);
     tray.on('click', () => togglePanel());
     tray.on('right-click', () => tray.popUpContextMenu(contextMenu()));
+
+    // Linux draws the menu itself, from the one set here and from nothing else. A tray icon there is a
+    // StatusNotifierItem: the panel reads its menu over the bus, and popUpContextMenu — which asks this
+    // process to place a window at the pointer — does nothing. Nor does the right-click event above ever
+    // fire. So without this line the menu on Linux has no items in it at all, which is what 1.0.0
+    // shipped: the icon appeared, the panel opened, and the menu was empty.
+    //
+    // It must stay Linux-only. On macOS a tray with a context menu set shows that menu on a LEFT click,
+    // so this line there would mean the panel never opens again.
+    if (process.platform === 'linux')
+        tray.setContextMenu(contextMenu());
+
     updateTray();
 }
 
 function contextMenu() {
+    // Command+… means something only on a Mac. Elsewhere Electron prints the string beside the item and
+    // binds nothing, so a Linux panel was offering “Quit ShulGo   Command+Q” — a shortcut that does not
+    // exist on the machine showing it. Better no hint than a wrong one.
+    const mac = process.platform === 'darwin';
+
     return Menu.buildFromTemplate([
+        // First, and on Linux the only way in: where an app indicator is used Electron ignores the click
+        // event, so for some panels this menu is the whole of what a click on the icon can reach.
+        { label: 'Open ShulGo', click: () => showPanel() },
+        { type: 'separator' },
         { label: 'Refresh', click: () => store.refresh({ fresh: true }) },
-        { label: 'Settings…', accelerator: 'Command+,', click: () => openSettings() },
+        { label: 'Settings…', accelerator: mac ? 'Command+,' : undefined, click: () => openSettings() },
         { type: 'separator' },
         { label: 'Open shulgo.com', click: () => shell.openExternal(api.siteUrl) },
         { type: 'separator' },
-        { label: 'Quit ShulGo', accelerator: 'Command+Q', click: () => { quitting = true; app.quit(); } },
+        { label: 'Quit ShulGo', accelerator: mac ? 'Command+Q' : undefined, click: () => { quitting = true; app.quit(); } },
     ]);
 }
 
@@ -196,20 +217,26 @@ function positionPanel() {
     panel.setBounds({ x, y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
 }
 
-function togglePanel() {
+function showPanel() {
     if (!panel)
         createPanel();
-    if (panel.isVisible()) {
-        panel.hide();
-
-        return;
-    }
     positionPanel();
     panel.show();
     panel.focus();
     sendState();
     if (store.stale)
         store.refresh();
+}
+
+/** Split from showPanel for the tray menu's “Open ShulGo”, which must open and not close. */
+function togglePanel() {
+    if (panel && panel.isVisible()) {
+        panel.hide();
+
+        return;
+    }
+
+    showPanel();
 }
 
 // ---- the settings window ------------------------------------------------------------------------

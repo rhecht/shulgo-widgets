@@ -38,8 +38,19 @@ jobs:
           # free on a public repository, so this is one more matrix row rather than a problem.
           # electron-builder takes the runner's own architecture when none is pinned, so the same
           # `npm run dist` yields arm64 here and the file names carry an -arm64 suffix.
+          #
+          # The .deb only, and that is a defect in electron-builder rather than a choice. Its arm64
+          # AppImage runtime is linked against an unversioned `libz.so`, which lives in zlib1g-dev
+          # and so is absent from every machine that has not installed build tools; the amd64
+          # runtime correctly names `libz.so.1`, which is in the zlib1g everything has. The arm64
+          # AppImage in desktop-v1.0.0 therefore died with "error while loading shared libraries:
+          # libz.so" on a stock Debian 13, and has been deleted from that release. Until the
+          # runtime is fixed upstream, arm64 Linux is served by the .deb, which was tested and
+          # starts. Pinning `arch` in package.json would not do this: on this runner it would build
+          # an x64 AppImage and overwrite the good one from the row above.
           - os: ubuntu-24.04-arm
             name: linux-arm64
+            dist_args: --linux deb
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -79,7 +90,9 @@ jobs:
       - name: Build
         # predist copies ../shulgo-core in. --publish never: we attach the files ourselves below, so a
         # missing token is never an error.
-        run: npm run dist -- --publish never
+        # dist_args is empty on every row but linux-arm64, where it drops the AppImage. See the
+        # matrix above for why.
+        run: npm run dist -- --publish never ${{ matrix.dist_args }}
         env:
           # Without this, electron-builder goes looking for a signing identity in the runner's empty
           # keychain and fails rather than producing an unsigned build.
@@ -124,18 +137,25 @@ jobs:
           # installer and the portable build the same extension and nearly the same name, and the
           # two Mac architectures differ by one word. Saying so here costs four lines and saves
           # somebody downloading 91 MB of the wrong thing.
+          # The version is substituted rather than typed, because it was typed for desktop-v1.0.0
+          # and the next tag would have published notes naming the previous tag's files.
           body: |
             The ShulGo desktop widget: the next minyan near you in the menu bar or tray, with events,
             mikvaos and today's zmanim.
 
             **Which file?**
 
-            - **Mac** — `ShulGo-1.0.0-arm64.dmg` for Apple Silicon (M1 and later), `ShulGo-1.0.0.dmg`
-              for an Intel Mac. The `.zip` files are the same app without the disk image.
-            - **Windows** — `ShulGo.Setup.1.0.0.exe` installs it. `ShulGo.1.0.0.exe` is the portable
-              build: it runs where you put it and installs nothing.
-            - **Linux** — the `.deb` for Debian and Ubuntu, the `.AppImage` anywhere else. `arm64`
-              files are for Apple Silicon under Asahi and for arm64 machines generally.
+            - **Mac** — `ShulGo-${{ steps.version.outputs.number }}-arm64.dmg` for Apple Silicon
+              (M1 and later), `ShulGo-${{ steps.version.outputs.number }}.dmg` for an Intel Mac. The
+              `.zip` files are the same app without the disk image.
+            - **Windows** — `ShulGo.Setup.${{ steps.version.outputs.number }}.exe` installs it.
+              `ShulGo.${{ steps.version.outputs.number }}.exe` is the portable build: it runs where
+              you put it and installs nothing.
+            - **Linux, Intel or AMD** — the `.deb` for Debian and Ubuntu,
+              `ShulGo-${{ steps.version.outputs.number }}.AppImage` anywhere else.
+            - **Linux, arm64** (Apple Silicon under Asahi, a Raspberry Pi, an arm64 server) — the
+              `.deb` only. There is no arm64 AppImage: electron-builder's arm64 runtime asks the
+              system for a library that is not there, so the one in 1.0.0 could not start at all.
 
             These builds are **not signed yet**. macOS will say the app is from an unidentified
             developer (right-click › Open the first time); Windows SmartScreen will warn before the

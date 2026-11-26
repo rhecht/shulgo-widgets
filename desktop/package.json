@@ -1,6 +1,6 @@
 {
   "name": "shulgo-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "ShulGo in the macOS menu bar (and the Windows tray): the next minyan near you, with events, mikvaos and zmanim.",
   "author": "ShulGo <info@shulgo.com>",
