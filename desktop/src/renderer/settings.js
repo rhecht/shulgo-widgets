@@ -110,8 +110,11 @@ function render() {
 
     $('keyPath').textContent = `Kept in ${s.keyFilePath}`;
     $('removeKey').hidden = !s.hasKey;
+    // Somebody with a key already pasted in should not have to hunt for Remove behind a disclosure
+    // meant to keep the box out of everyone else's way.
+    $('keyBox').open = s.hasKey;
     if (!$('keyStatus').textContent)
-        $('keyStatus').textContent = s.hasKey ? 'A key is saved.' : 'No key yet.';
+        $('keyStatus').textContent = s.hasKey ? 'This computer is linked.' : 'This computer isn’t linked yet.';
 }
 
 // ---- wiring -------------------------------------------------------------------------------------

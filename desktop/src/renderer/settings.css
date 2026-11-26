@@ -241,3 +241,41 @@ footer button:hover {
   color: var(--gold-light);
   user-select: text;
 }
+
+/* ---- "I already have a key" ----------------------------------------------------------------
+   A disclosure rather than a hidden feature: the box is one click away for the few who need it,
+   and out of the way of everyone who links their computer instead. */
+
+#keyBox {
+  margin-top: 14px;
+  border-top: 1px solid var(--veil-line);
+  padding-top: 12px;
+}
+
+#keyBox summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  list-style: none;
+}
+
+#keyBox summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The arrow is drawn here rather than left to the browser, so it turns with the disclosure and
+   matches the muted colour of the words beside it. */
+#keyBox summary::before {
+  content: "›";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.12s ease;
+}
+
+#keyBox[open] summary::before {
+  transform: rotate(90deg);
+}
+
+#keyBox summary:hover {
+  color: var(--text);
+}

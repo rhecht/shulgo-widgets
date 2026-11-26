@@ -101,10 +101,11 @@
     </section>
 
     <section>
-      <h2>API key</h2>
-      <p class="hint">Link this computer and a short code appears to approve on your phone — nothing
-        long to copy. Or ask your ShulGo administrator for a key and paste it below. Either way it is
-        kept in a file only you can read, and never in this window.</p>
+      <h2>This computer</h2>
+      <p class="hint">Press <b>Link this computer</b> and a short code appears. Approve it on your
+        phone — or anywhere you are signed in to ShulGo — and times show up here within seconds.
+        There is nothing long to type and nobody to ask. You can unlink this computer from your
+        ShulGo account whenever you like.</p>
       <button id="linkComputer">Link this computer…</button>
       <div class="link-box" id="linkBox" hidden>
         <p class="hint" id="linkWhere"></p>
@@ -112,17 +113,23 @@
         <div class="status" id="linkStatus"></div>
         <button id="linkCancel">Stop</button>
       </div>
-      <div class="search">
-        <input type="password" id="apiKey" placeholder="sg_live_…" autocomplete="off" spellcheck="false">
-        <button class="primary" id="saveKey">Save and test</button>
-        <button id="removeKey" hidden>Remove</button>
-      </div>
       <div class="status" id="keyStatus"></div>
-      <p class="hint" id="keyPath"></p>
-      <p class="hint">The mikvah listings come from mikvah.org, whose terms keep them to ShulGo’s own
-        apps. A key you ask for reads everything else — minyanim, events, zmanim — but the Mikvaos tab
-        stays hidden. If you run ShulGo yourself, an admin can issue a key of the kind that includes
-        them under <b>Admin › System › API &amp; apps</b>.</p>
+      <details id="keyBox">
+        <summary>I already have a key</summary>
+        <p class="hint">For a key somebody gave you, or one you issued yourself if you run ShulGo.
+          Most people never need this. It is kept in a file only you can read, and never shown here
+          again once saved.</p>
+        <div class="search">
+          <input type="password" id="apiKey" placeholder="sg_live_…" autocomplete="off" spellcheck="false">
+          <button class="primary" id="saveKey">Save and test</button>
+          <button id="removeKey" hidden>Remove</button>
+        </div>
+        <p class="hint" id="keyPath"></p>
+        <p class="hint">The mikvah listings come from mikvah.org, whose terms keep them to ShulGo’s own
+          apps. A key you ask for reads everything else — minyanim, events, zmanim — but the Mikvaos tab
+          stays hidden. If you run ShulGo yourself, an admin can issue a key of the kind that includes
+          them under <b>Admin › System › API &amp; apps</b>.</p>
+      </details>
     </section>
 
     <section>
