@@ -56,6 +56,42 @@ let quitting = false;
 // disagree with what we actually did.
 let panelUp = false;
 
+// ---- TEMPORARY. Not for a release. ------------------------------------------------------------
+//
+// Four candidate fixes for one fault, chosen with --panel-paint=<name>, so that one build can test
+// all of them on the one machine that can tell us anything.
+//
+// The fault, measured on a real Cutefish screen with WAYLAND_DEBUG=client: the first time the panel
+// is shown, Electron creates the xdg_toplevel, acks its configure and commits the surface, and never
+// attaches a wl_buffer. Nothing is painted, so the click looks like it did nothing. The second click
+// destroys that toplevel and the third makes a new one, which attaches three buffers at once and
+// works. So the renderer has content all along; it is the first toplevel that never gets a frame.
+//
+//   off         what ShulGo does today. The control, and the default.
+//   shown       the window is created already shown and hidden once it has painted, so the first
+//               toplevel it ever has is one Electron mapped itself. Watch for a flash at startup.
+//   invalidate  today's behaviour plus webContents.invalidate() after the first show.
+//   cycle       first show only: show, then hide and show again a moment later, so the toplevel the
+//               user sees is the second one — the state that is known to work, reached without them.
+//   fresh       no window until it is wanted; built shown, and destroyed when hidden, so every open
+//               is a newly mapped window and there is never a hidden one to go stale.
+//
+// Linux only, and `off` everywhere else, so a candidate cannot change what a Mac or Windows build
+// does. The choice is printed at startup: whoever reads the log should not have to trust a filename.
+const PAINT_CANDIDATES = ['off', 'shown', 'invalidate', 'cycle', 'fresh'];
+const PANEL_PAINT = paintCandidate(process.argv);
+let cycled = false;
+
+function paintCandidate(argv) {
+    if (process.platform !== 'linux')
+        return 'off';
+
+    const flag = '--panel-paint=';
+    const given = (argv.find((a) => a.startsWith(flag)) || '').slice(flag.length);
+
+    return PAINT_CANDIDATES.includes(given) ? given : 'off';
+}
+
 // ---- serving the renderer ---------------------------------------------------------------------
 
 function serveRenderer() {
@@ -185,7 +221,9 @@ function createPanel() {
     panel = new BrowserWindow({
         width: PANEL_WIDTH,
         height: PANEL_HEIGHT,
-        show: false,
+        // TEMPORARY: `show: false` is what ShulGo ships. Two candidates create the window already
+        // shown, which is the whole of what they are testing.
+        show: PANEL_PAINT === 'shown' || PANEL_PAINT === 'fresh',
         frame: false,
         resizable: false,
         movable: false,
@@ -218,6 +256,13 @@ function createPanel() {
         panel = null;
         panelUp = false;
     });
+
+    // TEMPORARY: let it paint once while visible, then take it away before anyone reads it.
+    if (PANEL_PAINT === 'shown')
+        panel.once('ready-to-show', () => {
+            if (!panelUp)
+                panel.hide();
+        });
 }
 
 /** Puts the panel under the menu-bar icon, kept inside the screen it's on. */
@@ -253,6 +298,21 @@ function showPanel() {
     panel.show();
     panel.focus();
     panelUp = true;
+
+    // TEMPORARY: the two candidates that act after a show rather than before it.
+    if (PANEL_PAINT === 'invalidate')
+        panel.webContents.invalidate();
+    if (PANEL_PAINT === 'cycle' && !cycled) {
+        cycled = true;
+        // A round trip to the compositor first: a hide and show in the same tick may never reach it.
+        setTimeout(() => {
+            if (panel && panelUp) {
+                panel.hide();
+                panel.show();
+                panel.focus();
+            }
+        }, 60);
+    }
     sendState();
     if (store.stale)
         store.refresh();
@@ -261,8 +321,17 @@ function showPanel() {
 /** Every way the panel goes away comes through here, so the flag above cannot drift. */
 function hidePanel() {
     panelUp = false;
-    if (panel)
-        panel.hide();
+    if (!panel)
+        return;
+
+    // TEMPORARY: nothing hidden means nothing hidden can go stale. Costs a reload on every open.
+    if (PANEL_PAINT === 'fresh') {
+        panel.destroy();
+
+        return;
+    }
+
+    panel.hide();
 }
 
 /** Split from showPanel for the tray menu's “Open ShulGo”, which must open and not close. */
@@ -570,7 +639,13 @@ function start() {
     serveRenderer();
     registerIpc();
     buildTray();
-    createPanel();
+
+    // TEMPORARY: say it out loud, so a log says which build it came from without anyone trusting a
+    // file name, and so a typo in the flag shows up as `off` rather than as a candidate that failed.
+    console.log('[shulgo] panel-paint:', PANEL_PAINT);
+
+    if (PANEL_PAINT !== 'fresh')
+        createPanel();
 
     store.start();
     store.refresh();
