@@ -47,6 +47,15 @@ let panel = null;
 let settingsWindow = null;
 let quitting = false;
 
+// Whether the panel is up. Tracked here rather than asked of Electron, because on Linux the answer
+// is wrong: the panel is created with show:false, but its xdg_toplevel exists from that moment and
+// is committed with no buffer — nothing on screen, and isVisible() true all the same. So the FIRST
+// click on the tray icon took the hide branch and destroyed a window nobody had seen, and it took a
+// second click to get the panel up. Measured on a real Cutefish 20261117 screen under
+// WAYLAND_DEBUG=client, twice from a fresh start. A flag we set where we show and hide cannot
+// disagree with what we actually did.
+let panelUp = false;
+
 // ---- serving the renderer ---------------------------------------------------------------------
 
 function serveRenderer() {
@@ -203,10 +212,11 @@ function createPanel() {
     const stayOpen = process.argv.includes('--dev');
     panel.on('blur', () => {
         if (!stayOpen && !panel.webContents.isDevToolsOpened())
-            panel.hide();
+            hidePanel();
     });
     panel.on('closed', () => {
         panel = null;
+        panelUp = false;
     });
 }
 
@@ -242,15 +252,23 @@ function showPanel() {
     positionPanel();
     panel.show();
     panel.focus();
+    panelUp = true;
     sendState();
     if (store.stale)
         store.refresh();
 }
 
+/** Every way the panel goes away comes through here, so the flag above cannot drift. */
+function hidePanel() {
+    panelUp = false;
+    if (panel)
+        panel.hide();
+}
+
 /** Split from showPanel for the tray menu's “Open ShulGo”, which must open and not close. */
 function togglePanel() {
-    if (panel && panel.isVisible()) {
-        panel.hide();
+    if (panelUp) {
+        hidePanel();
 
         return;
     }
@@ -541,6 +559,13 @@ function start() {
         updateTray();
         sendState();
     });
+
+    // A tray app has no menu bar, but on Linux it is given one anyway: a desktop with a global menu
+    // bar — Cutefish's, for one — shows Electron's default File / Edit / View / Window / Help while
+    // the panel is up, and not one of those items does anything in ShulGo. Linux only: a null menu on
+    // macOS would take away Cmd-Q, Cmd-C and the rest, which every Mac app is expected to have.
+    if (process.platform === 'linux')
+        Menu.setApplicationMenu(null);
 
     serveRenderer();
     registerIpc();
