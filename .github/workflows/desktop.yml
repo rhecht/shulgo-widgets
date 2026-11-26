@@ -40,8 +40,6 @@ jobs:
           # `npm run dist` yields arm64 here and the file names carry an -arm64 suffix.
           - os: ubuntu-24.04-arm
             name: linux-arm64
-            # See the fpm step below: this row needs a packager it can actually execute.
-            system_fpm: true
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -55,17 +53,28 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - name: Install
         run: npm ci
-      # electron-builder bundles fpm as fpm-1.9.3-2.3.1-linux-x86 — an x86 binary — and runs it
-      # whatever the host is. On the arm64 runner that is "cannot execute binary file: Exec format
-      # error", and it comes after the AppImage has already been built, so the first attempt at
-      # desktop-v1.0.0 produced a good arm64 AppImage and then failed on the .deb, which skipped
-      # the release job and left the other three platforms' installers with nowhere to go.
+      # Only the Linux rows build a .deb, and both of them now use the system fpm rather than
+      # electron-builder's own.
       #
-      # USE_SYSTEM_FPM makes electron-builder call the fpm on PATH instead of its own. Only this
-      # row needs it: the x86 fpm runs perfectly well on the amd64 runner, and it is the same fpm
-      # that builds the amd64 .deb today, so there is no reason to change what already works.
+      # electron-builder bundles its packager as fpm-1.9.3-2.3.1-linux-x86 — an x86 binary — and
+      # runs it whatever the host is. On the arm64 runner that is "cannot execute binary file:
+      # Exec format error", after the AppImage has already been built, so the first desktop-v1.0.0
+      # produced a good arm64 AppImage, failed on the .deb, and skipped the release job — which
+      # left three other platforms' finished installers with nowhere to go.
+      #
+      # The second attempt installed fpm for the arm64 row alone and set USE_SYSTEM_FPM to an
+      # empty string elsewhere. That broke the amd64 row, which had been fine: electron-builder
+      # tests whether the variable is SET, and a variable set to an empty string is set, so amd64
+      # went looking for a system fpm nobody had installed there — "exec: fpm: executable file not
+      # found in $PATH". The comment beside that line said electron-builder tests for set-ness and
+      # then set it to empty anyway.
+      #
+      # Hence no per-row cleverness. fpm is installed wherever a .deb is built, and the variable is
+      # set unconditionally, which is safe because mac builds dmg and zip and Windows builds nsis:
+      # neither ever invokes fpm, as both proved by passing in that second attempt with the
+      # variable set.
       - name: An fpm this machine can run
-        if: matrix.system_fpm
+        if: runner.os == 'Linux'
         run: sudo gem install --no-document fpm
       - name: Build
         # predist copies ../shulgo-core in. --publish never: we attach the files ourselves below, so a
@@ -75,9 +84,7 @@ jobs:
           # Without this, electron-builder goes looking for a signing identity in the runner's empty
           # keychain and fails rather than producing an unsigned build.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          # Empty rather than "false" on the other rows: electron-builder tests whether this is
-          # set, and a variable set to the word false is still set.
-          USE_SYSTEM_FPM: ${{ matrix.system_fpm && 'true' || '' }}
+          USE_SYSTEM_FPM: 'true'
       - name: Keep the installers
         uses: actions/upload-artifact@v4
         with:
