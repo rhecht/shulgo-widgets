@@ -89,9 +89,12 @@ jobs:
         run: sudo gem install --no-document fpm
       # fpm shells out to rpmbuild for the .rpm, and an Ubuntu runner has no rpm tooling at all.
       # Without this the Fedora, RHEL and openSUSE package is the one that silently never appears.
-      - name: rpmbuild, for the .rpm
+      # rpmbuild for the .rpm, and bsdtar for the .pacman — fpm shells out to both and an Ubuntu
+      # runner has neither. Found by building it: the first run produced the .deb and the .rpm and
+      # then died on "bsdtar: command not found" while assembling the Arch package.
+      - name: rpmbuild and bsdtar, for the .rpm and the .pacman
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm
+        run: sudo apt-get update && sudo apt-get install -y rpm libarchive-tools
       - name: Build
         # predist copies ../shulgo-core in. --publish never: we attach the files ourselves below, so a
         # missing token is never an error.
@@ -137,6 +140,8 @@ jobs:
         run: |
           sudo gem install --no-document fpm
           sudo apt-get update && sudo apt-get install -y rpm
+          # No bsdtar here: these two make a .deb and an .rpm and no Arch package. The Xfce
+          # widget's Arch users have the PKGBUILD, which is what the AUR wants anyway.
       - name: Build the packages
         run: sh packaging/build-linux-widgets.sh "$GITHUB_WORKSPACE/widget-packages"
       - uses: actions/upload-artifact@v4

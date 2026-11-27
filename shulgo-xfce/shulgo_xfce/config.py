@@ -179,6 +179,48 @@ def clear_bar():
         pass
 
 
+def forget():
+    """Remove everything this computer keeps. Returns the paths that were there and now are not.
+
+    Removing the package does not do this and should not: the files are under the person's own home
+    directory, and on a shared machine one `apt remove` would unlink everybody. So the widget has to
+    offer it, the way the desktop app's Settings does — otherwise uninstalling leaves the key on
+    disk and the computer still listed as a live device on somebody's ShulGo account.
+
+    **The key is shared with the GNOME extension.** `~/.config/jewbuntu/shulgo.conf` is read by both
+    halves of a Jewbuntu desktop, so this unlinks both, not only the tray widget. Whatever asks the
+    person first has to say so in those words.
+
+    Deliberately does NOT revoke anything on the server: only the person signed in can do that, at
+    /account/devices. Deleting our copy while shulgo.com went on listing the computer would be the
+    worse of the two failures — a key nobody can see and nobody can revoke — so the caller sends
+    them to that page instead.
+
+    Order matters: the key first. If something goes wrong half way through, the file that should not
+    be left behind is the one that is gone.
+    """
+    gone = []
+    for path in (key_path(), pending_path(), settings_path(), bar_path(), cache_path()):
+        try:
+            os.unlink(path)
+            gone.append(path)
+        except OSError:
+            # Not there, or not ours to delete. Either way there is nothing to tell anybody: the
+            # answer to "is my key still on this computer" is the same.
+            pass
+
+    # The directories too, but only if this was the last thing in them. Other programs write into
+    # ~/.config/jewbuntu — the GNOME extension for one — and rmdir on a directory with anything
+    # left in it fails, which is exactly the behaviour wanted here.
+    for directory in (os.path.dirname(key_path()), os.path.dirname(cache_path())):
+        try:
+            os.rmdir(directory)
+        except OSError:
+            pass
+
+    return gone
+
+
 def _read_lines(path):
     try:
         with open(path, encoding='utf-8') as fh:

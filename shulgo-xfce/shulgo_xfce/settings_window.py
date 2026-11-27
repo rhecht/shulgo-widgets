@@ -122,11 +122,19 @@ class SettingsWindow(Gtk.Window):
         link_button.set_halign(Gtk.Align.START)
         left.pack_start(link_button, False, False, 0)
 
-        left.pack_start(self._note('Linking shows a short code to type on your phone, and this '
-                                   'computer gets its own key. Or paste a key from your ShulGo '
-                                   'administrator. Either way it is kept in '
-                                   '~/.config/jewbuntu/shulgo.conf, readable only by you — never '
-                                   'in dconf.'), False, False, 0)
+        left.pack_start(self._note('Linking shows a short code to approve on your phone, and this '
+                                   'computer gets its own key within seconds. The box above is for '
+                                   'a key somebody gave you, which most people never have. Either '
+                                   'way it is kept in ~/.config/jewbuntu/shulgo.conf, readable '
+                                   'only by you — never in dconf.'), False, False, 0)
+
+        # The other half of linking, and the half an uninstaller cannot do. `apt remove` takes the
+        # program and leaves the key in the person's home directory, with this computer still
+        # listed as a live device on their ShulGo account.
+        forget_button = Gtk.Button(label='Forget this computer…')
+        forget_button.connect('clicked', self._on_forget)
+        forget_button.set_halign(Gtk.Align.START)
+        left.pack_start(forget_button, False, False, 0)
 
         left.pack_start(self._heading('Where you daven'), False, False, 0)
         finding = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -313,6 +321,39 @@ class SettingsWindow(Gtk.Window):
             return 'No place chosen yet, so there is nothing to look up.'
 
         return 'Looking around %s (%.4f, %.4f).' % (place[2], place[0], place[1])
+
+    def _on_forget(self, *_):
+        """Delete the key, the settings and the cache, then close.
+
+        Asked first, and the question says the two things somebody would not guess: that the key is
+        shared with the GNOME extension, so both halves of a Jewbuntu desktop are unlinked, and
+        that the account is untouched until they unlink the computer there themselves.
+
+        The address is printed rather than opened. The desktop app opens it, which is right on a
+        Mac; this widget exists for a 1 GHz machine with 256 MB of RAM, where launching a browser
+        as the program quits is a minute of swapping and a window nobody asked for.
+        """
+        asking = Gtk.MessageDialog(transient_for=self, modal=True,
+                                   message_type=Gtk.MessageType.WARNING,
+                                   buttons=Gtk.ButtonsType.NONE,
+                                   text='Forget this computer?')
+        asking.format_secondary_text(
+            'This deletes the key that links this computer, the place you chose and your '
+            'settings, and then closes ShulGo. The same key is used by ShulGo in the GNOME '
+            'panel, so that is unlinked too.\n\n'
+            'Your ShulGo account is not touched. To stop this computer appearing in it, unlink '
+            'it at shulgo.com/account/devices.')
+        asking.add_button('Cancel', Gtk.ResponseType.CANCEL)
+        asking.add_button('Forget', Gtk.ResponseType.OK)
+        asking.set_default_response(Gtk.ResponseType.CANCEL)
+        answer = asking.run()
+        asking.destroy()
+
+        if answer != Gtk.ResponseType.OK:
+            return
+
+        config.forget()
+        Gtk.main_quit()
 
     def _on_link(self, *_):
         """Imported here, not at the top: a session that never links never loads the window."""

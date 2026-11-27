@@ -49,7 +49,7 @@ xfce_version=$(version_of "$here/shulgo-xfce/shulgo_xfce/__main__.py")
 say "shulgo-xfce $xfce_version"
 
 stage=$(mktemp -d)
-make -C "$here/shulgo-xfce" install DESTDIR="$stage" PREFIX=/usr >/dev/null
+make -C "$here/shulgo-xfce" install DESTDIR="$stage" PREFIX=/usr
 
 XFCE_DESC="The next minyan near you in the tray, with upcoming events, mikvaos and today's zmanim, from ShulGo."
 
@@ -61,7 +61,7 @@ fpm -s dir -t deb \
     --deb-recommends xfce4-genmon-plugin \
     --deb-recommends gir1.2-dbusmenu-gtk3-0.4 \
     --chdir "$stage" \
-    --package "$out/shulgo-xfce_${xfce_version}_all.deb" . >/dev/null
+    --package "$out/shulgo-xfce_${xfce_version}_all.deb" .
 
 fpm -s dir -t rpm \
     --name shulgo-xfce --version "$xfce_version" --architecture noarch \
@@ -69,7 +69,7 @@ fpm -s dir -t rpm \
     --depends python3 --depends python3-gobject --depends gtk3 \
     --depends libayatana-appindicator-gtk3 \
     --chdir "$stage" \
-    --package "$out/shulgo-xfce-${xfce_version}.noarch.rpm" . >/dev/null
+    --package "$out/shulgo-xfce-${xfce_version}.noarch.rpm" .
 
 rm -rf "$stage"
 
@@ -82,7 +82,7 @@ gtk2_version=$(version_of "$here/shulgo-gtk2/shulgo_gtk2/main.py")
 say "shulgo-gtk2 $gtk2_version"
 
 stage=$(mktemp -d)
-make -C "$here/shulgo-gtk2" install DESTDIR="$stage" PREFIX=/usr >/dev/null
+make -C "$here/shulgo-gtk2" install DESTDIR="$stage" PREFIX=/usr
 
 # gzip, not xz. dpkg learned to read xz-compressed packages around 2010; the desktop this is for is
 # from 2007 and would refuse the package outright with today's default. Shipping a .deb it cannot
@@ -92,9 +92,9 @@ fpm -s dir -t deb \
     --maintainer "$MAINTAINER" --url "$URL" --category utils \
     --description "The next minyan near you, in the notification area of an older desktop." \
     --depends python --depends python-gtk2 \
-    --deb-compression gzip \
+    --deb-compression gz \
     --chdir "$stage" \
-    --package "$out/shulgo-gtk2_${gtk2_version}_all.deb" . >/dev/null
+    --package "$out/shulgo-gtk2_${gtk2_version}_all.deb" .
 
 rm -rf "$stage"
 

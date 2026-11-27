@@ -156,5 +156,54 @@ class TheSettingsFile(unittest.TestCase):
             self.assertIsNone(config.saved_place({'lat': 'north', 'lng': '-79.4'}))
 
 
+class ForgettingThisComputer(unittest.TestCase):
+    """What "Forget this computer" has to take away, and what it must leave alone."""
+
+    def test_it_takes_the_key_the_settings_and_the_cache(self):
+        with InATemporaryHome():
+            config.save_api_key(A_KEY)
+            config.save_settings({'place': 'Thornhill'})
+            config.save_bar('<txt>Mincha 4:32</txt>')
+            config.save_pending('dev-code', 'ABCD-EFGH', 9e9, 5)
+
+            gone = config.forget()
+
+            self.assertFalse(os.path.exists(config.key_path()))
+            self.assertFalse(os.path.exists(config.settings_path()))
+            self.assertFalse(os.path.exists(config.bar_path()))
+            self.assertFalse(os.path.exists(config.pending_path()))
+            self.assertIn(config.key_path(), gone)
+            # load_api_key answers '' for "no key", never None.
+            self.assertEqual(config.load_api_key(), '')
+
+    def test_forgetting_twice_is_not_an_error(self):
+        # Somebody presses it, nothing happens visibly, they press it again. That must not raise.
+        with InATemporaryHome():
+            config.save_api_key(A_KEY)
+            config.forget()
+            self.assertEqual(config.forget(), [])
+
+    def test_forgetting_nothing_is_not_an_error(self):
+        with InATemporaryHome():
+            self.assertEqual(config.forget(), [])
+
+    def test_it_leaves_another_program_s_files_where_they_are(self):
+        """The config directory is shared: ~/.config/jewbuntu holds the GNOME half's files too.
+
+        Deleting the directory outright would take those with it, which is why this removes named
+        files and then only rmdirs what is empty.
+        """
+        with InATemporaryHome():
+            config.save_api_key(A_KEY)
+            stranger = os.path.join(os.path.dirname(config.key_path()), 'somebody-else.conf')
+            with open(stranger, 'w', encoding='utf-8') as fh:
+                fh.write('not ours\n')
+
+            config.forget()
+
+            self.assertTrue(os.path.exists(stranger))
+            self.assertFalse(os.path.exists(config.key_path()))
+
+
 if __name__ == '__main__':
     unittest.main()
