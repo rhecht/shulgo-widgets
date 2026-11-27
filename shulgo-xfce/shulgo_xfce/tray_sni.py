@@ -148,8 +148,14 @@ class OwnItem:
             GLib.idle_add(self._popup)
 
     def _popup(self):
+        # Gtk.Menu.popup, deprecated as it is, and not popup_at_pointer: the click happened in the
+        # panel, so this process has no trigger event, and popup_at_pointer(None) then shows nothing
+        # at all (Lubuntu 26.10, 2026-11-27). popup() takes a timestamp instead, and on X11 the
+        # current time is enough for the grab; with no position function GTK puts it at the pointer.
         try:
-            self.menu.popup_at_pointer(None)
+            from gi.repository import Gtk
+
+            self.menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
         except Exception:
             pass
 
