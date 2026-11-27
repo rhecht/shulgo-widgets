@@ -8,7 +8,8 @@
  * a narrow preload bridge. The files under ../../shulgo-core are the very same ones the GNOME build runs.
  */
 
-import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, net, protocol, screen, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, net, protocol, screen, shell } from 'electron';
+import { rmSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -533,6 +534,77 @@ function registerIpc() {
 
     ipcMain.handle('shulgo:linkStop', () => {
         linking = null;
+
+        return { ok: true };
+    });
+
+    // "Remove ShulGo from this computer". Asked for in the main process rather than the renderer,
+    // and confirmed in a real dialog, because a page cannot be allowed to delete somebody's key on
+    // its own say-so.
+    //
+    // What an uninstaller cannot reach is the point of this. Add or Remove Programs, apt remove and
+    // dragging the app to the Trash all take away the program and leave userData behind: the chosen
+    // place, the settings, and the key that links this computer — which goes on being listed as a
+    // live device on the person's ShulGo account until somebody unlinks it. This removes all three,
+    // and opens the page where the key can be unlinked, because only the person signed in can do
+    // that and no uninstaller ever could.
+    ipcMain.handle('shulgo:removeEverything', async () => {
+        const mac = process.platform === 'darwin';
+        const hadKey = Boolean(settings.apiKey);
+        const answer = await dialog.showMessageBox(settingsWindow ?? undefined, {
+            type: 'warning',
+            buttons: ['Remove', 'Cancel'],
+            defaultId: 1,
+            cancelId: 1,
+            title: 'Remove ShulGo from this computer',
+            message: 'Remove ShulGo from this computer?',
+            detail: [
+                'This deletes the place you chose, your settings, and the key that links this',
+                'computer to your ShulGo account. It stops ShulGo opening when you log in, and',
+                'then quits.',
+                '',
+                hadKey
+                    ? 'Your ShulGo account and everything in it stay as they are. The page for'
+                        + ' unlinking this computer will open in your browser.'
+                    : 'Your ShulGo account and everything in it stay as they are.',
+            ].join(' ').replace(/ {2,}/g, ' '),
+            checkboxLabel: mac ? 'Also move ShulGo to the Trash' : undefined,
+            checkboxChecked: false,
+            noLink: true,
+        });
+
+        if (answer.response !== 0) {
+            return { ok: false };
+        }
+
+        quitting = true;
+        app.setLoginItemSettings({ openAtLogin: false });
+
+        // Opened before anything is deleted: afterwards there is no key to tell them which computer
+        // in that list is this one.
+        if (hadKey) {
+            shell.openExternal(`${api.siteUrl}/account/devices`);
+        }
+
+        try {
+            rmSync(app.getPath('userData'), { recursive: true, force: true });
+        } catch {
+            // Nothing useful to do, and nothing to warn about: the files are the person's own and
+            // the program is about to stop. Quitting with the key still on disk is the one thing
+            // worth avoiding, and unlinking it on the page above is what actually revokes it.
+        }
+
+        if (mac && answer.checkboxChecked) {
+            // ShulGo.app, three levels above the executable inside it.
+            const bundle = join(app.getPath('exe'), '..', '..', '..');
+            try {
+                await shell.trashItem(bundle);
+            } catch {
+                shell.showItemInFolder(bundle);
+            }
+        }
+
+        app.quit();
 
         return { ok: true };
     });

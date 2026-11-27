@@ -177,6 +177,8 @@ for (const event of ['input', 'change', 'search']) {
 
 $('saveKey').addEventListener('click', () => saveKey());
 $('removeKey').addEventListener('click', () => saveKey({ remove: true }));
+// No confirmation here: the main process asks, in a dialog this window cannot fake.
+$('removeEverything').addEventListener('click', () => window.shulgo.removeEverything());
 $('apiKey').addEventListener('keydown', (event) => {
     if (event.key === 'Enter')
         saveKey();

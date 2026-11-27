@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('shulgo', {
     reportNetwork: (online) => ipcRenderer.invoke('shulgo:network', online),
 
     searchPlaces: (text) => ipcRenderer.invoke('shulgo:searchPlaces', text),
+    // Asks; the main process does the confirming and the deleting.
+    removeEverything: () => ipcRenderer.invoke('shulgo:removeEverything'),
     setPlace: (match) => ipcRenderer.invoke('shulgo:setPlace', match),
     settleTimezone: () => ipcRenderer.invoke('shulgo:settleTimezone'),
     setKey: (key, options) => ipcRenderer.invoke('shulgo:setKey', key, options),

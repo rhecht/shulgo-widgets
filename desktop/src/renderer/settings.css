@@ -293,3 +293,18 @@ footer button:hover {
 .why:empty {
   display: none;
 }
+
+/* ---- removing ShulGo ------------------------------------------------------------------------
+   Plain, not red: this deletes a key and some settings on one computer, and it asks first. A
+   button dressed as a hazard beside "Advanced" would be louder than what it does, and the loud
+   thing in a settings window is the one people click to find out what it is. */
+
+.danger {
+  border-color: rgba(255, 138, 128, 0.45);
+  color: var(--bad);
+}
+
+.danger:hover {
+  border-color: var(--bad);
+  background: rgba(255, 138, 128, 0.12);
+}

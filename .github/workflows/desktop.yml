@@ -50,7 +50,7 @@ jobs:
           # an x64 AppImage and overwrite the good one from the row above.
           - os: ubuntu-24.04-arm
             name: linux-arm64
-            dist_args: --linux deb
+            dist_args: --linux deb rpm pacman
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -87,6 +87,11 @@ jobs:
       - name: An fpm this machine can run
         if: runner.os == 'Linux'
         run: sudo gem install --no-document fpm
+      # fpm shells out to rpmbuild for the .rpm, and an Ubuntu runner has no rpm tooling at all.
+      # Without this the Fedora, RHEL and openSUSE package is the one that silently never appears.
+      - name: rpmbuild, for the .rpm
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       - name: Build
         # predist copies ../shulgo-core in. --publish never: we attach the files ourselves below, so a
         # missing token is never an error.
@@ -109,13 +114,42 @@ jobs:
             desktop/dist/*.exe
             desktop/dist/*.AppImage
             desktop/dist/*.deb
+            desktop/dist/*.rpm
+            desktop/dist/*.pacman
+          if-no-files-found: error
+          retention-days: 30
+
+  # The two Python widgets, which are what 32-bit Linux has to use. Electron has shipped no
+  # linux-ia32 build since version 4 — its releases carry linux-x64, linux-arm64 and linux-armv7l
+  # and nothing else — so on an i686 machine the desktop app is not merely awkward, it does not
+  # exist. shulgo-xfce and shulgo-gtk2 are what runs there, and until now neither had a package
+  # anybody could download and open.
+  #
+  # One ordinary Ubuntu runner builds both: there is nothing compiled, so each package is
+  # architecture-independent and the same file installs on i686, x86_64 and arm64. They ride in the
+  # same release as the desktop app so that one page has every way of getting ShulGo onto a
+  # computer, which is the whole point of the exercise.
+  widgets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: fpm, and rpmbuild for the .rpm
+        run: |
+          sudo gem install --no-document fpm
+          sudo apt-get update && sudo apt-get install -y rpm
+      - name: Build the packages
+        run: sh packaging/build-linux-widgets.sh "$GITHUB_WORKSPACE/widget-packages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shulgo-widgets-linux
+          path: widget-packages/*
           if-no-files-found: error
           retention-days: 30
 
   release:
     # Only for a deliberate tag: `git tag desktop-v1.0.0 && git push origin desktop-v1.0.0`.
     if: startsWith(github.ref, 'refs/tags/desktop-v')
-    needs: build
+    needs: [build, widgets]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -151,11 +185,23 @@ jobs:
             - **Windows** — `ShulGo.Setup.${{ steps.version.outputs.number }}.exe` installs it.
               `ShulGo.${{ steps.version.outputs.number }}.exe` is the portable build: it runs where
               you put it and installs nothing.
-            - **Linux, Intel or AMD** — the `.deb` for Debian and Ubuntu,
-              `ShulGo-${{ steps.version.outputs.number }}.AppImage` anywhere else.
-            - **Linux, arm64** (Apple Silicon under Asahi, a Raspberry Pi, an arm64 server) — the
-              `.deb` only. There is no arm64 AppImage: electron-builder's arm64 runtime asks the
-              system for a library that is not there, so the one in 1.0.0 could not start at all.
+            - **Linux, 64-bit** — take the one your system uses: `.deb` for Debian, Ubuntu and
+              Mint; `.rpm` for Fedora, RHEL and openSUSE; `.pacman` for Arch and Manjaro; or the
+              `.AppImage`, which needs no installing at all. Files with `arm64` in the name are for
+              Apple Silicon under Asahi, a Raspberry Pi and other arm64 machines — there is no
+              arm64 AppImage, because electron-builder's arm64 runtime asks the system for a
+              library that is not there.
+            - **Linux, 32-bit** — `shulgo-xfce_*_all.deb` or `shulgo-xfce-*.noarch.rpm`. This is a
+              different, much lighter widget, in Python rather than Electron, and it is what 32-bit
+              machines need: Electron has shipped no 32-bit Linux build since 2018. The same file
+              installs on 32-bit and 64-bit alike. For a really old desktop — Ubuntu 7.10 and its
+              kin — `shulgo-gtk2_*_all.deb`.
+
+            **Removing it.** Uninstall the usual way for your system: Add or Remove Programs on
+            Windows, your package manager or software centre on Linux, or drag the app to the Trash
+            on a Mac. That leaves your settings and the key linking this computer behind, so there
+            is also **Remove ShulGo from this computer** in Settings, which clears those, stops it
+            opening at login and shows you where to unlink the computer from your account.
 
             These builds are **not signed yet**. macOS will say the app is from an unidentified
             developer (right-click › Open the first time); Windows SmartScreen will warn before the
