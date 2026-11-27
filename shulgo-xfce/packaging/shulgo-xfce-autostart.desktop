@@ -24,3 +24,5 @@ StartupNotify=false
 StartupWMClass=shulgo-xfce
 X-XFCE-Autostart-Enabled=true
 X-GNOME-Autostart-enabled=true
+# LXQt: start once the panel's tray exists, not before it (Lubuntu showed two icons otherwise).
+X-LXQt-Need-Tray=true

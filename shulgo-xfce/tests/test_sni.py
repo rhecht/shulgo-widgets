@@ -269,3 +269,34 @@ class TheInterfaceItDeclares(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class LubuntuLXQt(unittest.TestCase):
+    """LXQt is X11, but its panel sends left-clicks as Activate, which the library's item ignores."""
+
+    def test_lxqt_with_libdbusmenu_gets_our_own_item(self):
+        kind, why = sni.plan(False, True, True, lxqt=True)
+
+        self.assertEqual(kind, sni.OWN)
+        self.assertIn('LXQt', why)
+
+    def test_lxqt_without_libdbusmenu_keeps_the_library(self):
+        kind, _ = sni.plan(False, True, False, lxqt=True)
+
+        self.assertEqual(kind, sni.LIBRARY)
+
+    def test_a_setting_still_wins_on_lxqt(self):
+        self.assertEqual(sni.plan(False, True, True, forced=sni.LIBRARY, lxqt=True)[0], sni.LIBRARY)
+
+    def test_not_lxqt_x11_is_unchanged(self):
+        """Xfce (Arch 32), Classic and Lubuntu 18.04's LXDE are not LXQt: the library, as before."""
+        for have_dbusmenu in PRESENT:
+            self.assertEqual(sni.plan(False, True, have_dbusmenu, lxqt=False)[0], sni.LIBRARY)
+
+    def test_lxqt_is_read_from_xdg_current_desktop(self):
+        self.assertTrue(sni.lxqt({'XDG_CURRENT_DESKTOP': 'LXQt'}))
+        self.assertTrue(sni.lxqt({'XDG_CURRENT_DESKTOP': 'Lubuntu:LXQt'}))
+        self.assertTrue(sni.lxqt({'XDG_CURRENT_DESKTOP': 'lxqt'}))
+        self.assertFalse(sni.lxqt({'XDG_CURRENT_DESKTOP': 'XFCE'}))
+        self.assertFalse(sni.lxqt({'XDG_CURRENT_DESKTOP': 'LXDE'}))
+        self.assertFalse(sni.lxqt({}))

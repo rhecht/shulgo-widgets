@@ -141,6 +141,20 @@ class OwnItem:
         """
         invocation.return_value(None)
 
+        # Except on X11, where a client can put a menu at the pointer: LXQt's panel sends a
+        # left-click as Activate whatever ItemIsMenu says, and there the menu is what a left-click
+        # should open. On Wayland the host opens the menu itself, so nothing changes there.
+        if method in ('Activate', 'ContextMenu') and not sni.wayland(os.environ):
+            GLib.idle_add(self._popup)
+
+    def _popup(self):
+        try:
+            self.menu.popup_at_pointer(None)
+        except Exception:
+            pass
+
+        return False
+
     # ---- keeping it current ----------------------------------------------------------------
 
     def set_tooltip_body(self, text):

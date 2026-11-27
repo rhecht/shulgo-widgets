@@ -78,7 +78,7 @@ INTROSPECTION = """<node>
 </node>"""
 
 
-def plan(wayland, have_library, have_dbusmenu, forced=None):
+def plan(wayland, have_library, have_dbusmenu, forced=None, lxqt=False):
     """Which kind of tray item to own, and in one phrase why. Returns (kind, reason).
 
     The reason is not decoration: `--check` prints it, and the question somebody asks when a tray
@@ -122,8 +122,15 @@ def plan(wayland, have_library, have_dbusmenu, forced=None):
     if wayland and own_possible:
         return OWN, 'a Wayland session, where no other kind of item is read'
 
+    # LXQt (Lubuntu) is X11, but its panel sends a left-click to the item as Activate, which the
+    # library's item does not implement: left-click did nothing there, and at login the library's
+    # XEmbed fallback added a second icon (seen on Lubuntu 26.10, 2026-11-26). Our item answers
+    # Activate by opening the menu, and has no XEmbed fallback. Xfce and Classic are not LXQt.
+    if lxqt and own_possible:
+        return OWN, 'LXQt, whose panel sends a left-click to the item as Activate'
+
     if have_library:
-        return LIBRARY, asked + _why_not_own(wayland, forced, have_dbusmenu)
+        return LIBRARY, asked + _why_not_own(wayland or lxqt, forced, have_dbusmenu)
 
     return STATUS_ICON, asked + 'no appindicator library is installed'
 
@@ -160,6 +167,16 @@ def wayland(environ):
         return True
 
     return (environ.get('XDG_SESSION_TYPE') or '').strip().lower() == 'wayland'
+
+
+def lxqt(environ):
+    """Whether the desktop is LXQt (Lubuntu 22.04 and newer), from XDG_CURRENT_DESKTOP alone.
+
+    The variable is a colon-separated list ("LXQt", or "Lubuntu:LXQt" on some versions); any entry
+    equal to LXQt, ignoring case, counts. LXDE (Lubuntu 18.04) is not LXQt and keeps the library.
+    """
+    return any(part.strip().lower() == 'lxqt'
+               for part in (environ.get('XDG_CURRENT_DESKTOP') or '').split(':'))
 
 
 def bus_name(pid, serial=1):

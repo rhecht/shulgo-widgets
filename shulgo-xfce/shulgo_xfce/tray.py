@@ -72,9 +72,10 @@ def choose_tray(have_library, settings):
     """
     forced = (settings.get('tray-item') or '').strip().lower() or None
     wayland = sni.wayland(os.environ)
+    lxqt = sni.lxqt(os.environ)
     have_dbusmenu = False
 
-    if wayland or forced == sni.OWN:
+    if wayland or lxqt or forced == sni.OWN:
         try:
             from . import tray_sni
 
@@ -87,7 +88,7 @@ def choose_tray(have_library, settings):
     # Whether a tray is actually listening is not asked, and must not be: this runs from an
     # autostart entry, so at login it is often the compositor that is not ready yet rather than
     # absent. sni.plan says what asking cost the first time it was tried.
-    return sni.plan(wayland, have_library, have_dbusmenu, forced)
+    return sni.plan(wayland, have_library, have_dbusmenu, forced, lxqt=lxqt)
 
 
 class ShulGoTray:
@@ -477,7 +478,10 @@ class ShulGoTray:
         self._set(self.header, '<b>%s</b>' % escape_markup(place[2]))
 
         notice = offline_notice(self.state, bool(rows) or bool(self.state['zmanim']))
-        if self._pending is not None:
+        # A link request still waiting is news only while there is no key. Once the computer is
+        # linked, a second or leftover request's "Nobody has approved this yet." read as if the
+        # link had failed, on a ShulGo that was showing live times (Lubuntu, 2026-11-26).
+        if self._pending is not None and not self.api.has_key:
             self._set(self.notice, '<i>%s</i>'
                       % escape_markup(link.words(link.PENDING, self._pending)))
             self.notice.show()
